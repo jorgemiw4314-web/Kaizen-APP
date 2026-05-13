@@ -307,6 +307,11 @@
         }
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+        .update-banner { position: fixed; bottom: 0; left: 0; right: 0; background: linear-gradient(135deg, #1a1a2e, #16213e); border-top: 2px solid var(--gold); padding: 14px 18px; z-index: 9999; display: none; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 -4px 20px rgba(0,0,0,0.5); }
+        .update-banner.show { display: flex; }
+        .update-banner-text { font-size: 12px; color: #fff; font-weight: 500; }
+        .update-banner-sub { font-size: 10px; color: var(--text3); margin-top: 2px; }
+        .update-banner-btn { background: var(--gold); color: #000; border: none; border-radius: 8px; padding: 8px 16px; font-size: 11px; font-weight: 700; font-family: 'Poppins', sans-serif; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
         @media (max-width: 400px) {
             .stat-row { grid-template-columns: 1fr 1fr; }
             .tabs { flex-wrap: wrap; }
@@ -406,6 +411,11 @@
         </div>
     </div>
 
+    <div class="update-banner" id="updateBanner">
+        <div><div class="update-banner-text">🚀 Nueva actualización disponible</div><div class="update-banner-sub">Recarga para obtener la última versión</div></div>
+        <button class="update-banner-btn" onclick="location.reload(true)">Actualizar</button>
+    </div>
+
     <div class="modal-overlay" id="modalOverlay" onclick="cerrarModal()"></div>
     <div class="modal-sheet" id="modalSheet"><div class="modal-handle"></div><div class="modal-header"><div class="modal-icon" id="modalIcon"></div><div><div class="modal-title" id="modalTitle"></div><div class="modal-subtitle" id="modalSubtitle"></div></div></div><div class="modal-body" id="modalBody"></div></div>
     <div class="toast" id="toast">✅ <span id="toastMsg"></span></div>
@@ -417,6 +427,17 @@
         const BLOCK_TIME = 300000;
         let loginAttempts = 0;
         let blockUntil = null;
+
+        // Sistema de versiones — cambia este número cuando subas una actualización
+        const APP_VERSION = '1.0';
+        function verificarVersion() {
+            const versionGuardada = localStorage.getItem('kaizen-version');
+            if (versionGuardada && versionGuardada !== APP_VERSION) {
+                document.getElementById('updateBanner').classList.add('show');
+            }
+            localStorage.setItem('kaizen-version', APP_VERSION);
+        }
+        window.addEventListener('load', () => setTimeout(verificarVersion, 2000));
 
         function getStoredPassword() { return localStorage.getItem('kaizen-password') || DEFAULT_PASS; }
         function setStoredPassword(newPass) { localStorage.setItem('kaizen-password', newPass); }
@@ -527,7 +548,7 @@
                 const rawG = localStorage.getItem('kaizen-gastos'); if (rawG) { const p = JSON.parse(rawG); if (Array.isArray(p)) gastos = p; } 
                 const rawH = localStorage.getItem('kaizen-notif-historial'); if (rawH) { const p = JSON.parse(rawH); if (Array.isArray(p)) historialNotificaciones = p; } 
             } catch (e) { 
-                miembros = []; gastos = []; historialNotificaciones = [];
+                miembros = []; gastos = []; historialNotificaciones = []; notificacionesAutomaticas = [];
                 showToast('⚠️ Datos corruptos. Se han reiniciado.');
             } 
         }
@@ -846,7 +867,6 @@
             if (mInicio) mInicio.value = hoy(); if (gFecha) gFecha.value = hoy(); 
             actualizarVencimiento(); actualizarTodo();
         }
-    </script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
