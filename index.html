@@ -527,7 +527,7 @@
                 const rawG = localStorage.getItem('kaizen-gastos'); if (rawG) { const p = JSON.parse(rawG); if (Array.isArray(p)) gastos = p; } 
                 const rawH = localStorage.getItem('kaizen-notif-historial'); if (rawH) { const p = JSON.parse(rawH); if (Array.isArray(p)) historialNotificaciones = p; } 
             } catch (e) { 
-                miembros = []; gastos = []; historialNotificaciones = []; notificacionesAutomaticas = [];
+                miembros = []; gastos = []; historialNotificaciones = [];
                 showToast('⚠️ Datos corruptos. Se han reiniciado.');
             } 
         }
@@ -846,6 +846,7 @@
             if (mInicio) mInicio.value = hoy(); if (gFecha) gFecha.value = hoy(); 
             actualizarVencimiento(); actualizarTodo();
         }
+    </script>
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
