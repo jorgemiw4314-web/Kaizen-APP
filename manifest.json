@@ -2,7 +2,7 @@
   "name": "KaizenAPP - Fitness Admin",
   "short_name": "KaizenAPP",
   "description": "Administración de membresías para Kaizen Fitness",
-  "start_url": "./index55.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#cc0000",
