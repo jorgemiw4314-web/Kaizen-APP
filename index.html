@@ -321,7 +321,7 @@
     <div class="login-container" id="loginContainer">
         <div class="login-card">
             <div class="login-logo"><div class="login-logo-icon">改</div><div class="login-logo-text">KAIZEN</div><div class="login-logo-sub">FITNESS ADMIN</div></div>
-            <div class="login-field"><label class="login-label">👤 Usuario</label><input type="text" id="loginUser" class="login-input" placeholder="admin" autocomplete="off" aria-label="Usuario administrador" onkeypress="if(event.key==='Enter')document.getElementById('loginPass').focus()"><div class="login-error" id="loginUserError"></div></div>
+            <div class="login-field"><label class="login-label">👤 Usuario</label><input type="text" id="loginUser" class="login-input" placeholder="Tu usuario" autocomplete="off" aria-label="Usuario" onkeypress="if(event.key==='Enter')document.getElementById('loginPass').focus()"><div class="login-error" id="loginUserError"></div></div>
             <div class="login-field"><label class="login-label">🔒 Contraseña</label><input type="password" id="loginPass" class="login-input" placeholder="••••••••" aria-label="Contraseña" onkeypress="if(event.key==='Enter')login()"><div class="login-error" id="loginPassError"></div></div>
             <button class="login-btn" id="loginBtn" onclick="login()">🔐 Iniciar Sesión</button>
             <div class="login-attempts" id="loginAttempts"></div>
@@ -330,11 +330,12 @@
 
     <div class="change-password-modal" id="changePasswordModal">
         <div class="change-password-card">
-            <div class="change-password-title">🔑 Cambiar Contraseña</div><div class="change-password-sub">Administrador de Kaizen Fitness</div>
-            <div class="login-field"><label class="login-label">Contraseña Actual</label><input type="password" id="currentPass" class="login-input" placeholder="••••••••" aria-label="Contraseña actual"><div class="login-error" id="currentPassError"></div></div>
-            <div class="login-field"><label class="login-label">Nueva Contraseña</label><input type="password" id="newPass" class="login-input" placeholder="Mínimo 6 caracteres" aria-label="Nueva contraseña"><div class="login-error" id="newPassError"></div></div>
-            <div class="login-field"><label class="login-label">Confirmar Nueva Contraseña</label><input type="password" id="confirmPass" class="login-input" placeholder="Repite la nueva contraseña" aria-label="Confirmar contraseña"><div class="login-error" id="confirmPassError"></div></div>
-            <div style="display:flex;gap:10px"><button class="btn-primary" onclick="cambiarPassword()" style="flex:1">✅ Guardar Cambios</button><button class="btn-primary" onclick="cerrarCambioPassword()" style="flex:1;background:var(--surface2);color:var(--text2);box-shadow:none">❌ Cancelar</button></div>
+            <div class="change-password-title">⚙️ Cambiar Credenciales</div><div class="change-password-sub">Administrador de Kaizen Fitness</div>
+            <div class="login-field"><label class="login-label">Contraseña Actual</label><input type="password" id="currentPass" class="login-input" placeholder="••••••••"><div class="login-error" id="currentPassError"></div></div>
+            <div class="login-field"><label class="login-label">Nuevo Usuario (opcional)</label><input type="text" id="newUsername" class="login-input" placeholder="Dejar vacío para no cambiar" autocomplete="off"></div>
+            <div class="login-field"><label class="login-label">Nueva Contraseña (opcional)</label><input type="password" id="newPass" class="login-input" placeholder="Dejar vacío para no cambiar"><div class="login-error" id="newPassError"></div></div>
+            <div class="login-field"><label class="login-label">Confirmar Nueva Contraseña</label><input type="password" id="confirmPass" class="login-input" placeholder="Repite la nueva contraseña"><div class="login-error" id="confirmPassError"></div></div>
+            <div style="display:flex;gap:10px"><button class="btn-primary" onclick="cambiarCredenciales()" style="flex:1">✅ Guardar</button><button class="btn-primary" onclick="cerrarCambioPassword()" style="flex:1;background:var(--surface2);color:var(--text2);box-shadow:none">❌ Cancelar</button></div>
         </div>
     </div>
 
@@ -379,6 +380,7 @@
                 </div></div>
                 <div class="price-preview"><span class="price-preview-label">💰 Total a pagar</span><span class="price-preview-value" id="precioPreview">$500 MXN</span></div>
                 <div class="field-group"><label class="field-label">📅 Fechas</label><div class="date-grid"><div><label style="font-size:7px;color:var(--text3);display:block;margin-bottom:2px">Inicio</label><input type="date" id="m-inicio" aria-label="Fecha de inicio" oninput="actualizarVencimiento()"></div><div><label style="font-size:7px;color:var(--text3);display:block;margin-bottom:2px">Vencimiento</label><input type="date" id="m-vencimiento" readonly style="opacity:0.7" aria-label="Fecha de vencimiento"></div></div></div>
+                <div class="field-group"><label class="field-label">⏳ Días ya usados <span style="color:var(--text3);font-weight:400">(opcional)</span></label><input type="number" id="m-dias-usados" placeholder="0" min="0" max="30" value="0" style="width:100%;padding:10px 14px;border:2px solid var(--border);border-radius:var(--radius);font-size:15px;color:#fff;background:var(--surface2);font-family:'Poppins',sans-serif" oninput="actualizarVencimiento()"><span style="font-size:9px;color:var(--text3);margin-top:3px;display:block">Si el miembro ya lleva días, ponlos aquí y el sistema descontará automáticamente</span></div>
                 <button class="btn-primary" onclick="registrarMiembro()">✅ Registrar miembro</button>
             </div>
             <div class="filtro-miembros" id="filtroMiembros">
@@ -443,8 +445,8 @@
         let loginAttempts = 0;
         let blockUntil = null;
 
+        function getStoredUser() { return localStorage.getItem('kaizen-user') || DEFAULT_USER; }
         function getStoredPassword() { return localStorage.getItem('kaizen-password') || DEFAULT_PASS; }
-        function setStoredPassword(newPass) { localStorage.setItem('kaizen-password', newPass); }
         function isLoggedIn() { return sessionStorage.getItem('kaizen-auth') === 'true'; }
 
         function login() {
@@ -456,47 +458,48 @@
             const loginBtn = document.getElementById('loginBtn');
             userError.textContent = ''; passError.textContent = '';
             userInput.classList.remove('error'); passInput.classList.remove('error');
+
             if (blockUntil && Date.now() < blockUntil) {
                 const remaining = Math.ceil((blockUntil - Date.now()) / 60000);
                 attemptsDiv.textContent = `⛔ Cuenta bloqueada. Espera ${remaining} minuto(s)`;
                 attemptsDiv.className = 'login-attempts danger'; return;
-            } else if (blockUntil && Date.now() >= blockUntil) { 
-                loginAttempts = 0; blockUntil = null; attemptsDiv.textContent = ''; attemptsDiv.className = 'login-attempts'; 
+            } else if (blockUntil && Date.now() >= blockUntil) {
+                loginAttempts = 0; blockUntil = null; attemptsDiv.textContent = ''; attemptsDiv.className = 'login-attempts';
             }
+
             const user = userInput.value.trim();
             const pass = passInput.value.trim();
-            let hasError = false;
-            if (!user) { userError.textContent = 'Ingresa el usuario'; userInput.classList.add('error'); hasError = true; }
-            if (!pass) { passError.textContent = 'Ingresa la contraseña'; passInput.classList.add('error'); hasError = true; }
-            if (hasError) return;
-            if (user === DEFAULT_USER && pass === getStoredPassword()) {
+            if (!user) { userError.textContent = 'Ingresa tu usuario'; userInput.classList.add('error'); return; }
+            if (!pass) { passError.textContent = 'Ingresa la contraseña'; passInput.classList.add('error'); return; }
+
+            if (user === getStoredUser() && pass === getStoredPassword()) {
                 loginAttempts = 0; blockUntil = null;
                 sessionStorage.setItem('kaizen-auth', 'true');
-                sessionStorage.setItem('kaizen-user', user);
                 document.getElementById('loginContainer').classList.add('hidden');
                 document.getElementById('appContainer').classList.add('show');
-                userInput.value = ''; passInput.value = ''; attemptsDiv.textContent = ''; attemptsDiv.className = 'login-attempts';
-                init(); showToast('✅ Bienvenido, Administrador');
+                userInput.value = ''; passInput.value = '';
+                attemptsDiv.textContent = ''; attemptsDiv.className = 'login-attempts';
+                init(); showToast(`✅ Bienvenido, ${getStoredUser()}`);
             } else {
                 loginAttempts++;
                 const remaining = MAX_ATTEMPTS - loginAttempts;
-                if (user !== DEFAULT_USER) { userError.textContent = 'Usuario incorrecto'; userInput.classList.add('error'); }
+                if (user !== getStoredUser()) { userError.textContent = 'Usuario incorrecto'; userInput.classList.add('error'); }
                 if (pass !== getStoredPassword()) { passError.textContent = 'Contraseña incorrecta'; passInput.classList.add('error'); }
-                if (loginAttempts >= MAX_ATTEMPTS) { 
+                if (loginAttempts >= MAX_ATTEMPTS) {
                     blockUntil = Date.now() + BLOCK_TIME;
                     attemptsDiv.textContent = '⛔ Demasiados intentos. Bloqueado por 5 minutos';
                     attemptsDiv.className = 'login-attempts danger'; loginBtn.disabled = true;
-                    setTimeout(() => { loginBtn.disabled = false; loginAttempts = 0; blockUntil = null; attemptsDiv.textContent = ''; attemptsDiv.className = 'login-attempts'; }, BLOCK_TIME); 
+                    setTimeout(() => { loginBtn.disabled = false; loginAttempts = 0; blockUntil = null; attemptsDiv.textContent = ''; attemptsDiv.className = 'login-attempts'; }, BLOCK_TIME);
                 } else if (remaining <= 2) {
                     attemptsDiv.textContent = `⚠️ ${remaining} intento(s) restante(s)`;
-                    attemptsDiv.className = 'login-attempts warning'; 
+                    attemptsDiv.className = 'login-attempts warning';
                 }
             }
         }
 
         function logout() {
             if (confirm('¿Cerrar sesión como administrador?')) {
-                sessionStorage.removeItem('kaizen-auth'); sessionStorage.removeItem('kaizen-user');
+                sessionStorage.removeItem('kaizen-auth');
                 document.getElementById('appContainer').classList.remove('show');
                 document.getElementById('loginContainer').classList.remove('hidden');
                 showToast('👋 Sesión cerrada');
@@ -505,37 +508,47 @@
 
         function abrirCambioPassword() {
             document.getElementById('changePasswordModal').classList.add('show');
-            ['currentPass','newPass','confirmPass'].forEach(id => document.getElementById(id).value = '');
-            ['currentPassError','newPassError','confirmPassError'].forEach(id => document.getElementById(id).textContent = '');
+            ['currentPass','newPass','confirmPass','newUsername'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = ''; });
+            ['currentPassError','newPassError','confirmPassError'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).textContent = ''; });
         }
         function cerrarCambioPassword() { document.getElementById('changePasswordModal').classList.remove('show'); }
 
-        function cambiarPassword() {
+        function cambiarCredenciales() {
             const currentPass = document.getElementById('currentPass').value.trim();
+            const newUsername = document.getElementById('newUsername').value.trim();
             const newPass = document.getElementById('newPass').value.trim();
             const confirmPass = document.getElementById('confirmPass').value.trim();
             let hasError = false;
-            if (!currentPass) { document.getElementById('currentPassError').textContent = 'Ingresa la contraseña actual'; hasError = true; } 
+            ['currentPassError','newPassError','confirmPassError'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).textContent = ''; });
+
+            if (!currentPass) { document.getElementById('currentPassError').textContent = 'Ingresa tu contraseña actual'; hasError = true; }
             else if (currentPass !== getStoredPassword()) { document.getElementById('currentPassError').textContent = 'Contraseña actual incorrecta'; hasError = true; }
-            if (!newPass) { document.getElementById('newPassError').textContent = 'Ingresa la nueva contraseña'; hasError = true; } 
-            else if (newPass.length < 6) { document.getElementById('newPassError').textContent = 'Mínimo 6 caracteres'; hasError = true; } 
-            else if (newPass === DEFAULT_PASS) { document.getElementById('newPassError').textContent = 'No uses la contraseña por defecto'; hasError = true; }
-            if (!confirmPass) { document.getElementById('confirmPassError').textContent = 'Confirma la nueva contraseña'; hasError = true; } 
-            else if (newPass !== confirmPass) { document.getElementById('confirmPassError').textContent = 'Las contraseñas no coinciden'; hasError = true; }
+            if (newPass && newPass.length < 6) { document.getElementById('newPassError').textContent = 'Mínimo 6 caracteres'; hasError = true; }
+            if (newPass && newPass !== confirmPass) { document.getElementById('confirmPassError').textContent = 'Las contraseñas no coinciden'; hasError = true; }
             if (hasError) return;
-            setStoredPassword(newPass); cerrarCambioPassword(); showToast('🔒 Contraseña actualizada exitosamente');
+
+            if (newUsername) localStorage.setItem('kaizen-user', newUsername);
+            if (newPass) localStorage.setItem('kaizen-password', newPass);
+
+            cerrarCambioPassword();
+            const cambios = [];
+            if (newUsername) cambios.push('usuario');
+            if (newPass) cambios.push('contraseña');
+            showToast(`✅ ${cambios.length ? cambios.join(' y ') + ' actualizado' + (cambios.length > 1 ? 's' : '') : 'Sin cambios'} exitosamente`);
         }
 
-        window.addEventListener('DOMContentLoaded', () => { 
-            if (isLoggedIn()) { 
+        window.addEventListener('DOMContentLoaded', () => {
+            if (isLoggedIn()) {
                 document.getElementById('loginContainer').classList.add('hidden');
-                document.getElementById('appContainer').classList.add('show'); init(); 
+                document.getElementById('appContainer').classList.add('show');
+                init();
             }
             document.querySelectorAll('input, textarea, select').forEach(input => {
                 input.addEventListener('focus', () => document.body.classList.add('sticky-off'));
                 input.addEventListener('blur', () => document.body.classList.remove('sticky-off'));
             });
         });
+
 
         const PLANES = { 
             'Día': { precio: 50, dias: 1, tipo: 'dias' }, 
@@ -630,9 +643,33 @@
         function actualizarVencimiento() { 
             const inicio = document.getElementById('m-inicio'); 
             if (!inicio || !inicio.value) return;
+            const diasUsadosInput = document.getElementById('m-dias-usados');
+            let diasUsados = parseInt(diasUsadosInput?.value || 0) || 0;
+
+            // Calcular límite real de días según plan y mes calendario
+            let limiteMax = 0;
+            if (planSeleccionado === 'Día') limiteMax = 0;
+            else if (planSeleccionado === 'Semana') limiteMax = 6;
+            else if (planSeleccionado === 'Mes' || planSeleccionado === 'Pareja') {
+                // Días reales del mes de inicio
+                const partes = inicio.value.split('-');
+                const anio = Number(partes[0]), mes = Number(partes[1]);
+                limiteMax = new Date(anio, mes, 0).getDate() - 1; // días del mes - 1
+            }
+            if (diasUsadosInput) diasUsadosInput.max = limiteMax;
+            if (diasUsados > limiteMax) { diasUsados = limiteMax; if(diasUsadosInput) diasUsadosInput.value = limiteMax; }
+
             const resultado = calcularVencimiento(inicio.value, planSeleccionado);
-            if (resultado) document.getElementById('m-vencimiento').value = resultado;
-            else { document.getElementById('m-vencimiento').value = ''; showToast('⚠️ Fecha de inicio inválida'); }
+            if (resultado) {
+                if (diasUsados > 0) {
+                    const partes = resultado.split('-');
+                    const fechaVenc = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]), 12, 0, 0);
+                    fechaVenc.setDate(fechaVenc.getDate() - diasUsados);
+                    document.getElementById('m-vencimiento').value = fechaVenc.toISOString().split('T')[0];
+                } else {
+                    document.getElementById('m-vencimiento').value = resultado;
+                }
+            } else { document.getElementById('m-vencimiento').value = ''; showToast('⚠️ Fecha de inicio inválida'); }
         }
 
         function registrarMiembro() { 
@@ -649,7 +686,11 @@
             if (!ok) return; 
             const ahoraMiembro = Date.now();
             miembros.push({ id: ahoraMiembro, nombre, telefono, plan: planSeleccionado, precio: precioSeleccionado, inicio, vencimiento, activo: true, diasPausados: 0, fechaPausa: null, pagos: [{ id: ahoraMiembro + 1, fecha: inicio, monto: precioSeleccionado, plan: planSeleccionado }] });
-            guardarMiembros(); document.getElementById('m-nombre').value = ''; document.getElementById('m-telefono').value = ''; document.getElementById('m-inicio').value = hoy();
+            guardarMiembros(); 
+            document.getElementById('m-nombre').value = ''; 
+            document.getElementById('m-telefono').value = ''; 
+            document.getElementById('m-inicio').value = hoy();
+            document.getElementById('m-dias-usados').value = '0';
             actualizarVencimiento(); actualizarTodo(); showToast('✅ Miembro registrado: ' + nombre);
             showTab('miembros', document.querySelector('.tab-btn[data-tab="miembros"]')); 
         }
@@ -724,11 +765,13 @@
         function registrarPago(id) { 
             const m = miembros.find(mb => mb.id === id); if (!m || m.activo === false) { if (m && m.activo === false) showToast('⚠️ Este miembro está pausado. Reactívalo primero.'); return; } 
             const confirmar = confirm('💳 Registrar pago para ' + m.nombre + '\n\nPlan: ' + m.plan + ' ($' + m.precio + ')\nVence: ' + fmtFecha(m.vencimiento) + '\n\n¿Confirmar pago de $' + m.precio + '?'); 
-            if (!confirmar) return; if (!PLANES[m.plan]) { showToast('⚠️ Plan "' + m.plan + '" no reconocido.'); return; } 
-            const base = (m.vencimiento && diasRestantes(m.vencimiento) >= 0) ? m.vencimiento : hoy(); if (!m.pagos) m.pagos = [];
+            if (!confirmar) return; if (!PLANES[m.plan]) { showToast('⚠️ Plan "' + m.plan + '" no reconocido.'); return; }
+            // Bug 3 fix: sumar días desde vencimiento anterior si no ha vencido, desde hoy si ya venció
+            const base = (m.vencimiento && diasRestantes(m.vencimiento) >= 0) ? m.vencimiento : hoy();
+            if (!m.pagos) m.pagos = [];
             m.pagos.push({ id: Date.now(), fecha: hoy(), monto: m.precio, plan: m.plan }); 
             m.vencimiento = calcularVencimiento(base, m.plan);
-            m.inicio = hoy(); m.activo = true; guardarMiembros(); actualizarTodo(); showToast('💰 Pago registrado: ' + m.nombre + ' · $' + m.precio); 
+            m.activo = true; guardarMiembros(); actualizarTodo(); showToast('💰 Pago registrado: ' + m.nombre + ' · $' + m.precio); 
         }
 
         function renovarMiembro(id) { 
