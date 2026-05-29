@@ -15,8 +15,13 @@
     <link rel="apple-touch-icon" href="Iconos/icon-192x192.png">
     <link rel="apple-touch-icon" sizes="152x152" href="Iconos/icon-152x152.png">
     <link rel="apple-touch-icon" sizes="144x144" href="Iconos/icon-144x144.png">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&family=Bebas+Neue&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    <!-- Preconnect para carga más rápida -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://www.gstatic.com">
+    <!-- Solo pesos usados: 400,500,600,700,900 -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900&family=Bebas+Neue&family=Noto+Sans+JP:wght@900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer>
     </script>
     <style>
         :root {
@@ -312,6 +317,13 @@
             .tabs { flex-wrap: wrap; }
             .tab-btn { flex: 1 1 40%; font-size: 8px; padding: 7px 3px; }
         }
+        /* Utilidades */
+        .flex-gap { display:flex; gap:10px; }
+        .btn-cancel { flex:1; background:var(--surface2) !important; color:var(--text2) !important; box-shadow:none !important; }
+        .text-hint { font-size:7px; color:var(--text3); margin-top:3px; display:block; }
+        .text-optional { color:var(--text3); font-weight:400; }
+        .text-green { color:var(--green); }
+        .mb-14 { margin-bottom:14px; }
     </style>
 
 
@@ -335,7 +347,7 @@
             <div class="login-field"><label class="login-label">Nuevo Usuario (opcional)</label><input type="text" id="newUsername" class="login-input" placeholder="Dejar vacío para no cambiar" autocomplete="off"></div>
             <div class="login-field"><label class="login-label">Nueva Contraseña (opcional)</label><input type="password" id="newPass" class="login-input" placeholder="Dejar vacío para no cambiar"><div class="login-error" id="newPassError"></div></div>
             <div class="login-field"><label class="login-label">Confirmar Nueva Contraseña</label><input type="password" id="confirmPass" class="login-input" placeholder="Repite la nueva contraseña"><div class="login-error" id="confirmPassError"></div></div>
-            <div style="display:flex;gap:10px"><button class="btn-primary" onclick="cambiarCredenciales()" style="flex:1">✅ Guardar</button><button class="btn-primary" onclick="cerrarCambioPassword()" style="flex:1;background:var(--surface2);color:var(--text2);box-shadow:none">❌ Cancelar</button></div>
+            <div class="flex-gap"><button class="btn-primary" onclick="cambiarCredenciales()" style="flex:1">✅ Guardar</button><button class="btn-primary" onclick="cerrarCambioPassword()" class="btn-primary btn-cancel">❌ Cancelar</button></div>
         </div>
     </div>
 
@@ -349,7 +361,7 @@
                 <div class="stat-card" onclick="abrirModalStat('ingresos')"><div class="stat-icon">💰</div><div class="stat-value" id="st-ingresos">$0</div><div class="stat-label">Ingresos Mes</div></div>
                 <div class="stat-card" onclick="abrirModalStat('porVencer')"><div class="stat-icon">⚠️</div><div class="stat-value" id="st-porVencer">0</div><div class="stat-label">Por vencer</div></div>
             </div>
-            <div class="clean-box"><div><div class="clean-label">🏦 Ganancia Limpia (Ingresos - Gastos)</div><div style="font-size:7px;color:var(--text3);margin-top:1px">Mes actual</div></div><div class="clean-value" id="gananciaLimpia">$0</div></div>
+            <div class="clean-box"><div><div class="clean-label">🏦 Ganancia Limpia (Ingresos - Gastos)</div><div style="font-size:7px;color:var(--text3);margin-top:1px" id="quincelaLabel">Quincena actual</div></div><div class="clean-value" id="gananciaLimpia">$0</div></div>
             <div class="clean-box" style="cursor:pointer;margin-top:8px" onclick="abrirCapitalModal()"><div><div class="clean-label">💰 Capital</div><div style="font-size:7px;color:var(--text3);margin-top:1px">Toca para editar capital inicial</div></div><div class="clean-value" id="capitalTotal" style="color:var(--gold)">$0</div></div>
         </div>
 
@@ -401,9 +413,9 @@
                         <input type="number" id="capitalInicialInput" class="login-input" placeholder="0" min="0" style="font-size:18px">
                     </div>
                     <div style="font-size:11px;color:var(--text3);margin-bottom:12px">El sistema sumará automáticamente todos los pagos registrados en la app</div>
-                    <div style="display:flex;gap:10px">
+                    <div class="flex-gap">
                         <button class="btn-primary" onclick="guardarCapital()" style="flex:1">✅ Guardar</button>
-                        <button class="btn-primary" onclick="cerrarCapitalModal()" style="flex:1;background:var(--surface2);color:var(--text2);box-shadow:none">❌ Cancelar</button>
+                        <button class="btn-primary" onclick="cerrarCapitalModal()" class="btn-primary btn-cancel">❌ Cancelar</button>
                     </div>
                 </div>
             </div>
@@ -415,6 +427,7 @@
             <div class="form-card" style="margin-bottom:14px">
                 <div class="form-title">💸 Registrar Gasto</div><div class="form-sub">Sueldos, equipo, mantenimiento y más</div>
                 <div class="field-group"><label class="field-label">📂 Categoría</label><select id="g-categoria" aria-label="Categoría del gasto"><option value="Sueldo">💵 Sueldo</option><option value="Equipo">🏋️ Equipo</option><option value="Mantenimiento">🔧 Mantenimiento</option><option value="Renta">🏠 Renta</option><option value="Servicios">💡 Servicios</option><option value="Publicidad">📢 Publicidad</option><option value="Limpieza">🧹 Limpieza</option><option value="Otro">📦 Otro</option></select></div>
+                <div class="field-group"><label class="field-label">💳 Descontar de</label><select id="g-tipo" aria-label="Tipo de gasto"><option value="ganancia">📊 Ganancias del mes</option><option value="capital">💰 Capital</option></select><span style="font-size:9px;color:var(--text3);margin-top:3px;display:block">Ganancias del mes = gasto operativo · Capital = inversión o gasto mayor</span></div>
                 <div class="field-group"><label class="field-label">📝 Descripción</label><input type="text" id="g-descripcion" placeholder="Ej. Pago quincenal instructor" autocomplete="off" aria-label="Descripción del gasto" maxlength="100"><span class="err-msg" id="err-g-descripcion"></span></div>
                 <div class="field-group"><label class="field-label">💲 Monto</label><div class="input-with-prefix"><span class="prefix">$</span><input type="number" id="g-monto" placeholder="0.00" min="0" step="0.01" aria-label="Monto del gasto"></div><span class="err-msg" id="err-g-monto"></span></div>
                 <div class="field-group"><label class="field-label">📅 Fecha</label><input type="date" id="g-fecha" aria-label="Fecha del gasto"></div>
@@ -890,12 +903,14 @@
 
         function registrarGasto() { 
             ['g-descripcion', 'g-monto', 'g-fecha'].forEach(clearErr); 
-            const categoria = document.getElementById('g-categoria').value; const descripcion = document.getElementById('g-descripcion').value.trim(); 
+            const categoria = document.getElementById('g-categoria').value; 
+            const tipo = document.getElementById('g-tipo').value;
+            const descripcion = document.getElementById('g-descripcion').value.trim(); 
             const monto = parseFloat(document.getElementById('g-monto').value); const fecha = document.getElementById('g-fecha').value; 
             let ok = true; if (!descripcion) { setErr('g-descripcion', 'Campo requerido'); ok = false; } 
             if (isNaN(monto) || monto <= 0) { setErr('g-monto', 'Monto inválido'); ok = false; } 
             if (!fecha) { setErr('g-fecha', 'Fecha requerida'); ok = false; } if (!ok) return;
-            gastos.push({ id: Date.now(), categoria, descripcion, monto, fecha }); guardarGastos();
+            gastos.push({ id: Date.now(), categoria, descripcion, monto, fecha, tipo: tipo || 'ganancia' }); guardarGastos();
             document.getElementById('g-descripcion').value = ''; document.getElementById('g-monto').value = ''; document.getElementById('g-fecha').value = hoy();
             actualizarTodo(); showToast('💸 Gasto registrado: ' + descripcion + ' · $' + monto); 
         }
@@ -903,11 +918,12 @@
         function eliminarGasto(id) { if (!confirm('¿Eliminar este gasto?')) return; gastos = gastos.filter(g => g.id !== id); guardarGastos(); actualizarTodo(); showToast('🗑️ Gasto eliminado'); }
 
         function renderGastos() { 
-            const mesActual = new Date().getMonth(); const añoActual = new Date().getFullYear(); 
-            const gastosMes = gastos.filter(g => { const fg = new Date(g.fecha + 'T00:00:00'); return !isNaN(fg.getTime()) && fg.getMonth() === mesActual && fg.getFullYear() === añoActual; }).sort((a, b) => new Date(b.fecha + 'T00:00:00') - new Date(a.fecha + 'T00:00:00')); 
-            const totalGastosMes = gastosMes.reduce((s, g) => s + g.monto, 0); document.getElementById('gastosTotalMes').textContent = 'Total: ' + fmtMonto(totalGastosMes); 
-            const list = document.getElementById('gastosList'); if (gastosMes.length === 0) { list.innerHTML = '<div style="text-align:center;color:var(--text3);padding:20px;font-size:11px">✅ No hay gastos este mes</div>'; return; }
-            list.innerHTML = gastosMes.map(g => `<div class="gasto-item"><div class="gasto-info"><div class="gasto-categoria">${g.categoria}</div><div class="gasto-desc">${esc(g.descripcion)}</div><div class="gasto-fecha">${fmtFecha(g.fecha)}</div></div><span class="gasto-monto">-${fmtMonto(g.monto)}</span><button class="gasto-del" onclick="eliminarGasto(${g.id})">🗑️</button></div>`).join(''); 
+            const q = getQuincena();
+            const todosMes = gastos.filter(g => enQuincena(g.fecha)).sort((a, b) => new Date(b.fecha + 'T00:00:00') - new Date(a.fecha + 'T00:00:00'));
+            const totalGastosMes = todosMes.filter(g => g.tipo === 'ganancia' || !g.tipo).reduce((s, g) => s + g.monto, 0); 
+            document.getElementById('gastosTotalMes').textContent = 'Total ' + q.label + ': ' + fmtMonto(totalGastosMes); 
+            const list = document.getElementById('gastosList'); if (todosMes.length === 0) { list.innerHTML = '<div style="text-align:center;color:var(--text3);padding:20px;font-size:11px">✅ No hay gastos esta quincena</div>'; return; }
+            list.innerHTML = todosMes.map(g => `<div class="gasto-item"><div class="gasto-info"><div class="gasto-categoria">${g.categoria} <span style="font-size:8px;padding:1px 5px;border-radius:4px;background:${g.tipo === 'capital' ? 'rgba(212,175,55,0.2)' : 'rgba(239,68,68,0.2)'};color:${g.tipo === 'capital' ? '#d4af37' : '#ef4444'}">${g.tipo === 'capital' ? '💰 Capital' : '📊 Ganancia'}</span></div><div class="gasto-desc">${esc(g.descripcion)}</div><div class="gasto-fecha">${fmtFecha(g.fecha)}</div></div><span class="gasto-monto">-${fmtMonto(g.monto)}</span><button class="gasto-del" onclick="eliminarGasto(${g.id})">🗑️</button></div>`).join(''); 
         }
 
         function renderNotificaciones() { 
@@ -955,7 +971,27 @@
             enviarSiguiente();
         }
 
-        function getMesesData() { 
+        function getQuincena() {
+            const hoy = new Date();
+            const dia = hoy.getDate();
+            const mes = hoy.getMonth();
+            const año = hoy.getFullYear();
+            if (dia <= 15) {
+                return { inicio: new Date(año, mes, 1, 0, 0, 0), fin: new Date(año, mes, 15, 23, 59, 59), label: '1ra quincena' };
+            } else {
+                const ultimoDia = new Date(año, mes + 1, 0).getDate();
+                return { inicio: new Date(año, mes, 16, 0, 0, 0), fin: new Date(año, mes, ultimoDia, 23, 59, 59), label: '2da quincena' };
+            }
+        }
+
+        function enQuincena(fechaStr) {
+            const fg = new Date(fechaStr + 'T00:00:00');
+            if (isNaN(fg.getTime())) return false;
+            const q = getQuincena();
+            return fg >= q.inicio && fg <= q.fin;
+        } 
+
+        function getMesesData() {
             const ahora = new Date(); const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']; const meses = []; 
             for (let i = 11; i >= 0; i--) { const fecha = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1); meses.push({ mes: fecha.getMonth(), año: fecha.getFullYear(), nombre: mesesNombres[fecha.getMonth()] + ' ' + fecha.getFullYear().toString().slice(-2), ingresos: 0, gastos: 0 }); }
             miembros.forEach(m => { (m.pagos || []).forEach(p => { const fp = new Date(p.fecha + 'T00:00:00'); if (isNaN(fp.getTime())) return; const md = meses.find(mes => mes.mes === fp.getMonth() && mes.año === fp.getFullYear()); if (md) md.ingresos += p.monto || 0; }); });
@@ -982,7 +1018,6 @@
             const overlay = document.getElementById('modalOverlay'); const sheet = document.getElementById('modalSheet'); 
             const icon = document.getElementById('modalIcon'); const title = document.getElementById('modalTitle'); 
             const sub = document.getElementById('modalSubtitle'); const body = document.getElementById('modalBody'); 
-            const mesActual = new Date().getMonth(); const añoActual = new Date().getFullYear(); 
             const activos = miembros.filter(m => m.activo !== false); 
             if (tipo === 'miembros') {
                 icon.textContent = '👥'; title.textContent = 'Todos los Miembros'; sub.textContent = miembros.length + ' registrados'; 
@@ -993,9 +1028,10 @@
                 icon.textContent = '✅'; title.textContent = 'Miembros Activos'; sub.textContent = alDia.length + ' al día';
                 body.innerHTML = alDia.sort((a, b) => (diasRestantes(a.vencimiento) ?? 9999) - (diasRestantes(b.vencimiento) ?? 9999)).map(m => { const d = diasRestantes(m.vencimiento); return `<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">💪 ${esc(m.nombre)}</div><div class="modal-row-detail">${m.plan} · $${m.precio} · Vence ${fmtFecha(m.vencimiento)}</div></div><div class="modal-row-badge" style="color:${d<=5?'var(--orange)':'var(--green)'}">${d===0?'HOY':d+'d'}</div></div>`; }).join('') || '<div class="modal-empty"><span class="modal-empty-icon">✅</span>Todos al día</div>'; 
             } else if (tipo === 'ingresos') { 
-                const pagosMes = []; miembros.forEach(m => { (m.pagos || []).forEach(p => { const fp = new Date(p.fecha + 'T00:00:00'); if (!isNaN(fp.getTime()) && fp.getMonth() === mesActual && fp.getFullYear() === añoActual) { pagosMes.push({ ...p, nombre: m.nombre }); } }); });
+                const pagosMes = []; miembros.forEach(m => { (m.pagos || []).forEach(p => { if (enQuincena(p.fecha)) { pagosMes.push({ ...p, nombre: m.nombre }); } }); });
                 pagosMes.sort((a, b) => new Date(b.fecha + 'T00:00:00') - new Date(a.fecha + 'T00:00:00')); const totalMes = pagosMes.reduce((s, p) => s + (p.monto || 0), 0);
-                icon.textContent = '💰'; title.textContent = 'Ingresos del Mes'; sub.textContent = pagosMes.length + ' pagos · Total: ' + fmtMonto(totalMes);
+                const q = getQuincena();
+                icon.textContent = '💰'; title.textContent = 'Ingresos de la Quincena'; sub.textContent = pagosMes.length + ' pagos · Total: ' + fmtMonto(totalMes) + ' · ' + q.label;
                 body.innerHTML = pagosMes.length === 0 ? '<div class="modal-empty"><span class="modal-empty-icon">💸</span>Sin pagos este mes</div>' : pagosMes.map(p => `<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">💪 ${esc(p.nombre)}</div><div class="modal-row-detail">${p.plan||'—'} · ${fmtFecha(p.fecha)}</div></div><div class="modal-row-badge" style="color:var(--green)">${fmtMonto(p.monto)}</div></div>`).join(''); 
             } else if (tipo === 'porVencer') { 
                 const porVencer = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= 0 && d <= 5; }).sort((a, b) => (diasRestantes(a.vencimiento) ?? 999) - (diasRestantes(b.vencimiento) ?? 999));
@@ -1015,8 +1051,11 @@
                 if (!m.pagos) return total;
                 return total + m.pagos.reduce((s, p) => s + (p.monto || 0), 0);
             }, 0);
-            const totalGastos = gastos.reduce((total, g) => total + (g.monto || 0), 0);
-            return totalPagos - totalGastos;
+            // Solo gastos de tipo capital se descuentan del Capital
+            const totalGastosCapital = gastos.filter(g => g.tipo === 'capital').reduce((total, g) => total + (g.monto || 0), 0);
+            // Gastos de tipo ganancia se descuentan de ganancias, no del capital
+            const totalGastosGanancia = gastos.filter(g => g.tipo === 'ganancia' || !g.tipo).reduce((total, g) => total + (g.monto || 0), 0);
+            return totalPagos - totalGastosCapital - totalGastosGanancia;
         }
         function actualizarCapital() {
             const el = document.getElementById('capitalTotal');
@@ -1063,16 +1102,17 @@
 
         function actualizarStats() { 
             const activos = miembros.filter(m => m.activo === true); const pausados = miembros.filter(m => m.activo === false); 
-            const mesActual = new Date().getMonth(); const añoActual = new Date().getFullYear(); 
-            const ingresosMes = miembros.reduce((t, m) => t + (m.pagos || []).reduce((s, p) => { const fp = new Date(p.fecha + 'T00:00:00'); return !isNaN(fp.getTime()) && fp.getMonth() === mesActual && fp.getFullYear() === añoActual ? s + p.monto : s; }, 0), 0); 
-            const gastosMes = gastos.filter(g => { const fg = new Date(g.fecha + 'T00:00:00'); return !isNaN(fg.getTime()) && fg.getMonth() === mesActual && fg.getFullYear() === añoActual; }).reduce((s, g) => s + g.monto, 0); 
+            const ingresosMes = miembros.reduce((t, m) => t + (m.pagos || []).reduce((s, p) => { return enQuincena(p.fecha) ? s + p.monto : s; }, 0), 0); 
+            const gastosMes = gastos.filter(g => enQuincena(g.fecha) && (g.tipo === 'ganancia' || !g.tipo)).reduce((s, g) => s + g.monto, 0); 
             const gananciaLimpia = ingresosMes - gastosMes; const porVencer = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= 0 && d <= 5; }).length;
             document.getElementById('st-total').textContent = miembros.length;
             document.getElementById('st-activos').textContent = activos.filter(m => { const d = diasRestantes(m.vencimiento); return d !== null && d >= 0; }).length;
             document.getElementById('st-ingresos').textContent = fmtMonto(ingresosMes);
             document.getElementById('st-porVencer').textContent = porVencer; 
             const glEl = document.getElementById('gananciaLimpia');
-            glEl.textContent = fmtMonto(gananciaLimpia); glEl.style.color = gananciaLimpia >= 0 ? 'var(--green)' : '#ef4444'; 
+            glEl.textContent = fmtMonto(gananciaLimpia); glEl.style.color = gananciaLimpia >= 0 ? 'var(--green)' : '#ef4444';
+            const qlEl = document.getElementById('quincelaLabel');
+            if (qlEl) { const q = getQuincena(); qlEl.textContent = q.label + ' · ' + ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'][new Date().getMonth()]; }
         }
 
         function actualizarDashboard() { 
@@ -1115,9 +1155,9 @@
                     <div class="plan-name">💑 Pareja</div><div class="plan-duration">30 días · 2</div><div class="plan-price">$900<span> MXN</span></div>
                 </div>
             </div>
-            <div style="display:flex;gap:10px">
+            <div class="flex-gap">
                 <button class="btn-primary" onclick="confirmarRenovacion()" style="flex:1">✅ Renovar</button>
-                <button class="btn-primary" onclick="cerrarRenovarModal()" style="flex:1;background:var(--surface2);color:var(--text2);box-shadow:none">❌ Cancelar</button>
+                <button class="btn-primary" onclick="cerrarRenovarModal()" class="btn-primary btn-cancel">❌ Cancelar</button>
             </div>
         </div>
     </div>
