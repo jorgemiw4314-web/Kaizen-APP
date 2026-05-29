@@ -1053,9 +1053,7 @@
             }, 0);
             // Solo gastos de tipo capital se descuentan del Capital
             const totalGastosCapital = gastos.filter(g => g.tipo === 'capital').reduce((total, g) => total + (g.monto || 0), 0);
-            // Gastos de tipo ganancia se descuentan de ganancias, no del capital
-            const totalGastosGanancia = gastos.filter(g => g.tipo === 'ganancia' || !g.tipo).reduce((total, g) => total + (g.monto || 0), 0);
-            return totalPagos - totalGastosCapital - totalGastosGanancia;
+            return totalPagos - totalGastosCapital;
         }
         function actualizarCapital() {
             const el = document.getElementById('capitalTotal');
