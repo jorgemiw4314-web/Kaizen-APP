@@ -602,7 +602,13 @@
             } 
         }
 
-        function hoy() { return new Date().toISOString().split('T')[0]; }
+        function hoy() {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return y + '-' + m + '-' + day;
+        }
         function normalizarTexto(s) { return String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim(); }
 
         function sumarDias(fecha, dias) { 
@@ -707,7 +713,8 @@
                     const partes = resultado.split('-');
                     const fechaVenc = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]), 12, 0, 0);
                     fechaVenc.setDate(fechaVenc.getDate() - diasUsados);
-                    document.getElementById('m-vencimiento').value = fechaVenc.toISOString().split('T')[0];
+                    const yy = fechaVenc.getFullYear(); const mm = String(fechaVenc.getMonth() + 1).padStart(2, '0'); const dd = String(fechaVenc.getDate()).padStart(2, '0');
+                    document.getElementById('m-vencimiento').value = yy + '-' + mm + '-' + dd;
                 } else {
                     document.getElementById('m-vencimiento').value = resultado;
                 }
@@ -834,6 +841,8 @@
                 if (c.dataset.plan === m.plan) c.classList.add('selected');
             });
             document.getElementById('renovarPlanSeleccionado').value = m.plan;
+            document.getElementById('renovarFecha').value = hoy();
+            document.getElementById('renovarFecha').max = hoy();
             document.getElementById('renovarModal').dataset.miembroId = id;
             document.getElementById('renovarModal').classList.add('show');
         }
@@ -841,15 +850,17 @@
         function confirmarRenovacion() {
             const id = parseInt(document.getElementById('renovarModal').dataset.miembroId);
             const planValido = document.getElementById('renovarPlanSeleccionado').value;
+            const fechaPago = document.getElementById('renovarFecha').value || hoy();
             const m = miembros.find(mb => mb.id === id);
             // Bug 2 fix: validar que haya un plan seleccionado
             if (!m) { showToast('⚠️ Error: miembro no encontrado'); cerrarRenovarModal(); return; }
             if (!planValido || !PLANES[planValido]) { showToast('⚠️ Selecciona un plan primero'); return; }
+            if (fechaPago > hoy()) { showToast('⚠️ La fecha no puede ser futura'); return; }
             const datosPlan = PLANES[planValido];
-            m.plan = planValido; m.precio = datosPlan.precio; m.inicio = hoy();
-            m.vencimiento = calcularVencimiento(hoy(), planValido);
+            m.plan = planValido; m.precio = datosPlan.precio; m.inicio = fechaPago;
+            m.vencimiento = calcularVencimiento(fechaPago, planValido);
             m.activo = true; m.diasPausados = 0; m.fechaPausa = null; if (!m.pagos) m.pagos = [];
-            m.pagos.push({ id: Date.now(), fecha: hoy(), monto: datosPlan.precio, plan: planValido });
+            m.pagos.push({ id: Date.now(), fecha: fechaPago, monto: datosPlan.precio, plan: planValido });
             guardarMiembros(); actualizarTodo();
             document.getElementById('renovarModal').classList.remove('show');
             showToast('🔄 Renovado: ' + m.nombre + ' · ' + planValido + ' $' + datosPlan.precio);
@@ -1046,19 +1057,16 @@
 
         // ---- CAPITAL ----
         function getCapitalInicial() { return parseFloat(localStorage.getItem('kaizen-capital-inicial') || 0); }
-        function getTotalPagosHistorico() {
-            const totalPagos = miembros.reduce((total, m) => {
-                if (!m.pagos) return total;
-                return total + m.pagos.reduce((s, p) => s + (p.monto || 0), 0);
-            }, 0);
-            // Solo gastos de tipo capital se descuentan del Capital
+        function getMovimientosCapital() {
+            // El Capital NO incluye pagos de miembros (esos son ingresos del mes).
+            // Solo los gastos de tipo "capital" descuentan del Capital.
             const totalGastosCapital = gastos.filter(g => g.tipo === 'capital').reduce((total, g) => total + (g.monto || 0), 0);
-            return totalPagos - totalGastosCapital;
+            return -totalGastosCapital;
         }
         function actualizarCapital() {
             const el = document.getElementById('capitalTotal');
             if (!el) return;
-            const total = Math.round(getCapitalInicial() + getTotalPagosHistorico());
+            const total = Math.round(getCapitalInicial() + getMovimientosCapital());
             el.textContent = '$' + total.toLocaleString('es-MX');
         }
         function abrirCapitalModal() {
@@ -1069,17 +1077,7 @@
         function guardarCapital() {
             const val = parseFloat(document.getElementById('capitalInicialInput').value) || 0;
             localStorage.setItem('kaizen-capital-inicial', val);
-            // Bug 1 fix: sincronizar capital con Firebase
-            if (window._fb && !_fbBloqueado) {
-                try {
-                    const { db, doc, setDoc } = window._fb;
-                    setDoc(doc(db, 'kaizen', 'datos'), {
-                        miembros, gastos, historialNotificaciones,
-                        capitalInicial: val,
-                        updatedAt: new Date().toISOString()
-                    }).catch(e => console.warn('FB capital sync error:', e));
-                } catch(e) {}
-            }
+            syncFirebase();
             cerrarCapitalModal();
             actualizarCapital();
             showToast('💰 Capital guardado');
@@ -1153,6 +1151,11 @@
                     <div class="plan-name">💑 Pareja</div><div class="plan-duration">30 días · 2</div><div class="plan-price">$900<span> MXN</span></div>
                 </div>
             </div>
+            <div class="field-group" style="margin:10px 0">
+                <label class="field-label">📅 Fecha del pago</label>
+                <input type="date" id="renovarFecha" class="login-input" style="font-size:14px">
+                <span style="font-size:9px;color:var(--text3);margin-top:3px;display:block">Si renovaron en otra fecha, ajústala aquí</span>
+            </div>
             <div class="flex-gap">
                 <button class="btn-primary" onclick="confirmarRenovacion()" style="flex:1">✅ Renovar</button>
                 <button class="btn-primary" onclick="cerrarRenovarModal()" class="btn-primary btn-cancel">❌ Cancelar</button>
@@ -1175,7 +1178,6 @@
         font-family:'Poppins',sans-serif;
         font-size:14px;
         box-shadow:0 4px 20px rgba(0,0,0,0.4);
-        display:none;
         align-items:center;
         gap:12px;
         white-space:nowrap;
