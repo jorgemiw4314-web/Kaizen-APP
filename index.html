@@ -596,10 +596,30 @@
                 const rawM = localStorage.getItem('kaizen-miembros'); if (rawM) { const p = JSON.parse(rawM); if (Array.isArray(p)) miembros = p; } 
                 const rawG = localStorage.getItem('kaizen-gastos'); if (rawG) { const p = JSON.parse(rawG); if (Array.isArray(p)) gastos = p; } 
                 const rawH = localStorage.getItem('kaizen-notif-historial'); if (rawH) { const p = JSON.parse(rawH); if (Array.isArray(p)) historialNotificaciones = p; } 
+                migrarPausadosVencidos();
             } catch (e) { 
                 miembros = []; gastos = []; historialNotificaciones = [];
                 showToast('⚠️ Datos corruptos. Se han reiniciado.');
             } 
+        }
+
+        // Migración: pausados con 0 días guardados son en realidad vencidos
+        function migrarPausadosVencidos() {
+            if (localStorage.getItem('kaizen-migracion-vencidos') === 'v1') return;
+            let cambiados = 0;
+            miembros.forEach(m => {
+                if (m.activo === false && (!m.diasPausados || m.diasPausados === 0) && m.vencimiento) {
+                    // Estaba pausado pero sin días guardados — era un vencido del sistema viejo
+                    m.activo = true;
+                    m.fechaPausa = null;
+                    cambiados++;
+                }
+            });
+            localStorage.setItem('kaizen-migracion-vencidos', 'v1');
+            if (cambiados > 0) {
+                guardarMiembros();
+                setTimeout(() => showToast('✅ ' + cambiados + ' miembros migrados a "Vencidos"'), 1500);
+            }
         }
 
         function hoy() {
