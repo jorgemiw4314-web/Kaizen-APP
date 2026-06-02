@@ -559,8 +559,16 @@
             if (newPass && newPass !== confirmPass) { document.getElementById('confirmPassError').textContent = 'Las contraseñas no coinciden'; hasError = true; }
             if (hasError) return;
 
+            const cambioUsuario = newUsername && newUsername !== getStoredUser();
+
             if (newUsername) localStorage.setItem('kaizen-user', newUsername);
             if (newPass) localStorage.setItem('kaizen-password', newPass);
+
+            // Si cambió el usuario, migrar los datos al nuevo espacio de Firebase y resuscribir
+            if (cambioUsuario) {
+                syncFirebase();      // Sube los datos al nuevo espacio del usuario
+                suscribirFirebase(); // Resuscribe al nuevo espacio
+            }
 
             cerrarCambioPassword();
             const cambios = [];
@@ -766,13 +774,21 @@
 
         let _fbSyncTimer = null;
         let _fbBloqueado = false;
+        let _fbUnsubscribe = null;
+
+        function getUserDocId() {
+            // Normaliza el usuario para usarlo como ID de documento de Firebase
+            const u = (getStoredUser() || 'admin').toLowerCase().replace(/[^a-z0-9]/g, '_');
+            return 'user_' + u;
+        }
+
         function syncFirebase() {
             if (!window._fb || _fbBloqueado) return;
             clearTimeout(_fbSyncTimer);
             _fbSyncTimer = setTimeout(() => {
                 try {
                     const { db, doc, setDoc } = window._fb;
-                    setDoc(doc(db, 'kaizen', 'datos'), {
+                    setDoc(doc(db, 'kaizen', getUserDocId()), {
                         miembros: miembros,
                         gastos: gastos,
                         historialNotificaciones: historialNotificaciones,
@@ -789,9 +805,11 @@
 
         function suscribirFirebase() {
             if (!window._fb) { setTimeout(suscribirFirebase, 500); return; }
+            // Si hay una suscripción anterior, cancelarla
+            if (_fbUnsubscribe) { try { _fbUnsubscribe(); } catch(e) {} _fbUnsubscribe = null; }
             try {
                 const { db, doc, onSnapshot } = window._fb;
-                onSnapshot(doc(db, 'kaizen', 'datos'), (snap) => {
+                _fbUnsubscribe = onSnapshot(doc(db, 'kaizen', getUserDocId()), (snap) => {
                     if (!snap.exists) return;
                     const data = snap.data();
                     _fbBloqueado = true;
