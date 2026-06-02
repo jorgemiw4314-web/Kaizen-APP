@@ -832,7 +832,7 @@
         function getMiembrosFiltrados() { 
             let todos = [...miembros]; 
             switch (filtroActual) { 
-                case 'activos': return todos.filter(m => m.activo === true); 
+                case 'activos': return todos.filter(m => m.activo === true && (diasRestantes(m.vencimiento) === null || diasRestantes(m.vencimiento) >= 0)); 
                 case 'pausados': return todos.filter(m => m.activo === false); 
                 case 'vencidos': return todos.filter(m => m.activo === true && diasRestantes(m.vencimiento) !== null && diasRestantes(m.vencimiento) < 0); 
                 default: return todos; 
