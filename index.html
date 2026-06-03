@@ -215,6 +215,7 @@
         .btn-sm.pay { background: var(--green); color: #fff; }
         .btn-sm.whatsapp { background: var(--whatsapp); color: #fff; }
         .btn-sm.pause { background: var(--purple); color: #fff; }
+        .btn-sm.edit { background: var(--gold); color: #000; }
         .btn-sm.resume { background: #10b981; color: #fff; }
         .btn-sm:active { transform: scale(0.95); }
 
@@ -223,6 +224,13 @@
         .filtro-btn.active { background: var(--red); color: #fff; border-color: var(--red); }
         .filtro-btn:active { transform: scale(0.95); }
         .filtro-btn:focus-visible { outline: 2px solid var(--red); outline-offset: 2px; }
+        .search-wrap { position: relative; margin: 10px 0 12px; }
+        .search-icon { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); font-size: 14px; opacity: 0.6; pointer-events: none; }
+        .search-input { width: 100%; padding: 10px 36px 10px 36px; border: 2px solid var(--border); border-radius: var(--radius); background: var(--surface2); color: #fff; font-size: 13px; font-family: 'Poppins', sans-serif; transition: border-color 0.2s; }
+        .search-input:focus { outline: none; border-color: var(--red); }
+        .search-input::placeholder { color: var(--text3); font-size: 12px; }
+        .search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: var(--surface); border: none; color: var(--text2); width: 24px; height: 24px; border-radius: 50%; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+        .search-clear:active { transform: translateY(-50%) scale(0.9); }
         .member-list { display: flex; flex-direction: column; gap: 7px; }
         .member-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; display: flex; flex-direction: column; gap: 8px; animation: fadeUp 0.3s ease; position: relative; }
         .member-card.pausada { border-color: rgba(139,92,246,0.4); background: rgba(139,92,246,0.03); }
@@ -347,7 +355,7 @@
             <div class="login-field"><label class="login-label">Nuevo Usuario (opcional)</label><input type="text" id="newUsername" class="login-input" placeholder="Dejar vacío para no cambiar" autocomplete="off"></div>
             <div class="login-field"><label class="login-label">Nueva Contraseña (opcional)</label><input type="password" id="newPass" class="login-input" placeholder="Dejar vacío para no cambiar"><div class="login-error" id="newPassError"></div></div>
             <div class="login-field"><label class="login-label">Confirmar Nueva Contraseña</label><input type="password" id="confirmPass" class="login-input" placeholder="Repite la nueva contraseña"><div class="login-error" id="confirmPassError"></div></div>
-            <div class="flex-gap"><button class="btn-primary" onclick="cambiarCredenciales()" style="flex:1">✅ Guardar</button><button class="btn-primary" onclick="cerrarCambioPassword()" class="btn-primary btn-cancel">❌ Cancelar</button></div>
+            <div class="flex-gap"><button class="btn-primary" onclick="cambiarCredenciales()" style="flex:1">✅ Guardar</button><button class="btn-primary btn-cancel" onclick="cerrarCambioPassword()">❌ Cancelar</button></div>
         </div>
     </div>
 
@@ -374,7 +382,7 @@
 
         <div class="page active" id="page-dashboard">
             <div class="dash-grid">
-                <div class="dash-card"><div class="dash-title">📈 Ganancias vs Gastos</div><div class="dash-sub">Últimos 12 meses</div><div class="chart-container"><canvas id="gananciasChart"></canvas></div><div class="chart-legend"><div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Ingresos</div><div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div> Gastos</div><div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div> Ganancia Neta</div></div></div>
+                <div class="dash-card"><div class="dash-title">📈 Ganancias vs Gastos</div><div class="dash-sub">Últimos 12 meses · Toca la leyenda para ver detalle</div><div class="chart-container"><canvas id="gananciasChart"></canvas></div><div class="chart-legend"><div class="legend-item" style="cursor:pointer" onclick="abrirModalGrafica('ingresos')"><div class="legend-dot" style="background:var(--green)"></div> Ingresos</div><div class="legend-item" style="cursor:pointer" onclick="abrirModalGrafica('gastos')"><div class="legend-dot" style="background:#ef4444"></div> Gastos</div><div class="legend-item" style="cursor:pointer" onclick="abrirModalGrafica('ganancia')"><div class="legend-dot" style="background:var(--gold)"></div> Ganancia Neta</div></div></div>
                 <div class="dash-card"><div class="dash-title">🏋️ Resumen del Gimnasio</div><div class="dash-sub">Vistazo rápido de Kaizen Fitness</div><div class="dash-mini-row" id="dashResumen"></div></div>
                 <div class="dash-card"><div class="dash-title">📅 Próximos Vencimientos</div><div class="dash-sub">Miembros que vencen en los próximos 5 días</div><div id="dashVencimientos"></div></div>
             </div>
@@ -403,6 +411,12 @@
                 <button class="filtro-btn" data-filtro="vencidos" onclick="cambiarFiltro('vencidos', this)">❌ Vencidos</button>
             </div>
 
+            <div class="search-wrap">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" class="search-input" placeholder="Buscar por nombre o teléfono..." oninput="buscarMiembros(this.value)" autocomplete="off">
+                <button class="search-clear" id="searchClear" onclick="limpiarBusqueda()" style="display:none">✕</button>
+            </div>
+
             <!-- Modal Capital -->
             <div class="change-password-modal" id="capitalModal">
                 <div class="change-password-card">
@@ -415,7 +429,7 @@
                     <div style="font-size:11px;color:var(--text3);margin-bottom:12px">El sistema sumará automáticamente todos los pagos registrados en la app</div>
                     <div class="flex-gap">
                         <button class="btn-primary" onclick="guardarCapital()" style="flex:1">✅ Guardar</button>
-                        <button class="btn-primary" onclick="cerrarCapitalModal()" class="btn-primary btn-cancel">❌ Cancelar</button>
+                        <button class="btn-primary btn-cancel" onclick="cerrarCapitalModal()">❌ Cancelar</button>
                     </div>
                 </div>
             </div>
@@ -465,6 +479,7 @@
             db: _db,
             doc: (db, col, id) => db.collection(col).doc(id),
             setDoc: (ref, data) => ref.set(data),
+            getDoc: (ref) => ref.get(),
             onSnapshot: (ref, cb, err) => ref.onSnapshot(cb, err)
         };
     </script>
@@ -531,6 +546,16 @@
 
         function logout() {
             if (confirm('¿Cerrar sesión como administrador?')) {
+                // Cancelar suscripción a Firebase
+                if (_fbUnsubscribe) { try { _fbUnsubscribe(); } catch(e) {} _fbUnsubscribe = null; }
+                // Limpiar datos de localStorage para evitar fugas entre usuarios
+                localStorage.removeItem('kaizen-miembros');
+                localStorage.removeItem('kaizen-gastos');
+                localStorage.removeItem('kaizen-notif-historial');
+                localStorage.removeItem('kaizen-capital-inicial');
+                localStorage.removeItem('kaizen-migracion-vencidos');
+                // Limpiar variables en memoria
+                miembros = []; gastos = []; historialNotificaciones = [];
                 sessionStorage.removeItem('kaizen-auth');
                 document.getElementById('appContainer').classList.remove('show');
                 document.getElementById('loginContainer').classList.remove('hidden');
@@ -564,10 +589,31 @@
             if (newUsername) localStorage.setItem('kaizen-user', newUsername);
             if (newPass) localStorage.setItem('kaizen-password', newPass);
 
-            // Si cambió el usuario, migrar los datos al nuevo espacio de Firebase y resuscribir
+            // Si cambió el usuario, manejar la migración inteligente:
+            // - Si el nuevo usuario no tiene datos en Firebase: subir los actuales
+            // - Si ya tiene datos: cargar los suyos (no sobreescribir)
             if (cambioUsuario) {
-                syncFirebase();      // Sube los datos al nuevo espacio del usuario
                 suscribirFirebase(); // Resuscribe al nuevo espacio
+                // Si el nuevo usuario no tiene documento, syncFirebase creará uno
+                // con los datos actuales (el onSnapshot solo se dispara si hay datos)
+                setTimeout(() => {
+                    // Si después de suscribir, el espacio sigue vacío en Firebase,
+                    // subimos los datos actuales del usuario anterior
+                    if (window._fb) {
+                        try {
+                            const { db, doc, getDoc } = window._fb;
+                            if (typeof getDoc === 'function') {
+                                getDoc(doc(db, 'kaizen', getUserDocId())).then(snap => {
+                                    if (!snap.exists) syncFirebase();
+                                }).catch(() => {});
+                            } else {
+                                // Fallback: si no hay getDoc disponible, intentar sync de todas formas
+                                // pero solo después de un delay para dar tiempo a onSnapshot
+                                setTimeout(() => syncFirebase(), 800);
+                            }
+                        } catch(e) {}
+                    }
+                }, 500);
             }
 
             cerrarCambioPassword();
@@ -587,6 +633,16 @@
                 input.addEventListener('focus', () => document.body.classList.add('sticky-off'));
                 input.addEventListener('blur', () => document.body.classList.remove('sticky-off'));
             });
+            // Scroll para que el campo enfocado quede visible (también funciona en modales)
+            document.addEventListener('focusin', (e) => {
+                if (e.target.matches('input, textarea, select')) {
+                    setTimeout(() => {
+                        try {
+                            e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        } catch(err) {}
+                    }, 300);
+                }
+            });
         });
 
 
@@ -597,7 +653,8 @@
             'Pareja': { precio: 900, dias: 1, tipo: 'meses' }
         };
         let planSeleccionado = 'Mes', precioSeleccionado = 500, diasSeleccionados = 1, tipoSeleccionado = 'meses';
-        let miembros = [], gastos = [], historialNotificaciones = [], gananciasChart = null, filtroActual = 'todos';
+        let miembros = [], gastos = [], historialNotificaciones = [], gananciasChart = null, filtroActual = 'todos', busquedaActual = '';
+        let _fbSyncTimer = null, _fbBloqueado = false, _fbUnsubscribe = null;
 
         function cargarDatos() { 
             try { 
@@ -689,7 +746,14 @@
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('page-' + name).classList.add('active'); 
             if (btn) btn.classList.add('active'); 
-            if (name === 'miembros') renderMiembros(); 
+            if (name === 'miembros') {
+                // Sincronizar el input con la búsqueda actual
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) searchInput.value = busquedaActual || '';
+                const clearBtn = document.getElementById('searchClear');
+                if (clearBtn) clearBtn.style.display = busquedaActual ? 'flex' : 'none';
+                renderMiembros();
+            } 
             if (name === 'gastos') renderGastos(); 
             if (name === 'notificaciones') renderNotificaciones(); 
             if (name === 'dashboard') { actualizarDashboard(); setTimeout(() => actualizarGraficoGanancias(), 150); } 
@@ -772,10 +836,6 @@
             showTab('miembros', document.querySelector('.tab-btn[data-tab="miembros"]')); 
         }
 
-        let _fbSyncTimer = null;
-        let _fbBloqueado = false;
-        let _fbUnsubscribe = null;
-
         function getUserDocId() {
             // Normaliza el usuario para usarlo como ID de documento de Firebase
             const u = (getStoredUser() || 'admin').toLowerCase().replace(/[^a-z0-9]/g, '_');
@@ -847,14 +907,49 @@
             if (btn) btn.classList.add('active'); renderMiembros(); 
         }
 
+        function irAFiltro(filtro) {
+            // Mapear filtros del resumen a los tipos de modal
+            const mapeo = {
+                'todos': 'miembros',
+                'activos': 'activos',
+                'pausados': 'pausados',
+                'vencidos': 'vencidos'
+            };
+            abrirModalStat(mapeo[filtro] || 'miembros');
+        }
+
+        function buscarMiembros(texto) {
+            busquedaActual = (texto || '').trim().toLowerCase();
+            const clearBtn = document.getElementById('searchClear');
+            if (clearBtn) clearBtn.style.display = busquedaActual ? 'flex' : 'none';
+            renderMiembros();
+        }
+
+        function limpiarBusqueda() {
+            const input = document.getElementById('searchInput');
+            if (input) input.value = '';
+            busquedaActual = '';
+            document.getElementById('searchClear').style.display = 'none';
+            renderMiembros();
+        }
+
         function getMiembrosFiltrados() { 
-            let todos = [...miembros]; 
+            let todos = [...miembros];
+            // Filtro por categoría
             switch (filtroActual) { 
-                case 'activos': return todos.filter(m => m.activo === true && (diasRestantes(m.vencimiento) === null || diasRestantes(m.vencimiento) >= 0)); 
-                case 'pausados': return todos.filter(m => m.activo === false); 
-                case 'vencidos': return todos.filter(m => m.activo === true && diasRestantes(m.vencimiento) !== null && diasRestantes(m.vencimiento) < 0); 
-                default: return todos; 
-            } 
+                case 'activos': todos = todos.filter(m => m.activo === true && (diasRestantes(m.vencimiento) === null || diasRestantes(m.vencimiento) >= 0)); break;
+                case 'pausados': todos = todos.filter(m => m.activo === false); break;
+                case 'vencidos': todos = todos.filter(m => m.activo === true && diasRestantes(m.vencimiento) !== null && diasRestantes(m.vencimiento) < 0); break;
+            }
+            // Filtro por búsqueda
+            if (busquedaActual) {
+                todos = todos.filter(m => {
+                    const nombre = (m.nombre || '').toLowerCase();
+                    const tel = (m.telefono || '').toLowerCase();
+                    return nombre.includes(busquedaActual) || tel.includes(busquedaActual);
+                });
+            }
+            return todos;
         }
 
         function registrarPago(id) { 
@@ -912,6 +1007,35 @@
 
         function eliminarMiembro(id) { if (!confirm('¿Eliminar este miembro permanentemente?')) return; miembros = miembros.filter(m => m.id !== id); guardarMiembros(); actualizarTodo(); showToast('🗑️ Miembro eliminado'); }
 
+        function editarMiembro(id) {
+            const m = miembros.find(mb => mb.id === id);
+            if (!m) return;
+            document.getElementById('edit-nombre').value = m.nombre || '';
+            document.getElementById('edit-telefono').value = m.telefono || '';
+            document.getElementById('editarModal').dataset.miembroId = id;
+            document.getElementById('editarModal').classList.add('show');
+        }
+
+        function cerrarEditarModal() {
+            document.getElementById('editarModal').classList.remove('show');
+        }
+
+        function guardarEdicion() {
+            const id = parseInt(document.getElementById('editarModal').dataset.miembroId);
+            const m = miembros.find(mb => mb.id === id);
+            if (!m) { cerrarEditarModal(); return; }
+            const nuevoNombre = document.getElementById('edit-nombre').value.trim();
+            const nuevoTel = document.getElementById('edit-telefono').value.trim();
+            if (!nuevoNombre) { showToast('⚠️ El nombre no puede estar vacío'); return; }
+            if (!nuevoTel) { showToast('⚠️ El teléfono no puede estar vacío'); return; }
+            m.nombre = nuevoNombre;
+            m.telefono = nuevoTel;
+            guardarMiembros();
+            actualizarTodo();
+            cerrarEditarModal();
+            showToast('✅ Datos actualizados');
+        }
+
         function enviarWhatsAppIndividual(id) { 
             const m = miembros.find(mb => mb.id === id); if (!m) return;
             if (!m.telefono) { showToast('⚠️ Este miembro no tiene teléfono registrado'); return; }
@@ -935,6 +1059,10 @@
         function renderMiembros() { 
             const list = document.getElementById('memberList'); const filtrados = getMiembrosFiltrados(); 
             if (filtrados.length === 0) { 
+                if (busquedaActual) {
+                    list.innerHTML = `<div class="empty-state"><span class="empty-icon">🔍</span><div class="empty-title">Sin resultados</div><div class="empty-desc">No se encontró "${esc(busquedaActual)}"</div></div>`;
+                    return;
+                }
                 const msgs = { 'todos': ['🏋️', 'Sin miembros aún', 'Registra tu primer miembro'], 'activos': ['✅', 'Sin miembros activos', 'Todos están pausados o vencidos'], 'pausados': ['⏸️', 'Sin membresías pausadas', 'Ningún miembro está en pausa'], 'vencidos': ['❌', 'Sin membresías vencidas', 'Todos están al día'] }; 
                 const [icon, title, desc] = msgs[filtroActual] || msgs['todos'];
                 list.innerHTML = `<div class="empty-state"><span class="empty-icon">${icon}</span><div class="empty-title">${title}</div><div class="empty-desc">${desc}</div></div>`; return; 
@@ -946,7 +1074,7 @@
                 const pagosArray = m.pagos || []; const pH = pagosArray.length ? '<div class="pagos-list">' + pagosArray.slice().reverse().slice(0, 5).map(p => `<div class="pago-row"><div><span class="pago-plan">${p.plan||m.plan}</span><span class="pago-fecha"> · ${fmtFecha(p.fecha)}</span></div><span class="pago-monto">$${p.monto}</span></div>`).join('') + '</div>' : '<div class="no-pagos">Sin pagos registrados</div>'; 
                 const diasInfo = pausada ? `<div class="dias-guardados-info">💾 ${m.diasPausados || 0} días guardados</div>` : ''; 
                 const pausaBtn = pausada ? `<button class="btn-sm resume" onclick="togglePausaMiembro(${m.id})">▶️ Reactivar</button>` : `<button class="btn-sm pause" onclick="togglePausaMiembro(${m.id})">⏸️ Pausar</button>`; 
-                return `<div class="member-card${pausada?' pausada':''}"><div class="member-top"><div class="member-avatar${pausada?' pausada':''}">${pausada?'⏸️':'💪'}</div><div class="member-info"><div class="member-name">${esc(m.nombre)}</div><div class="member-phone">📱 ${esc(m.telefono)}</div><span class="member-plan-badge${pausada?' pausada':''}">${m.plan} · $${m.precio} MXN</span></div><div class="member-status"><div class="member-days ${sc}">${pausada?'⏸':(dias!==null?dias+'d':'--')}</div><div class="member-status-label">${st}</div></div></div>${diasInfo}${pH}<div class="member-actions">${pausaBtn}${!pausada?`<button class="btn-sm pay" onclick="registrarPago(${m.id})">💰 Pagar</button>`:''}<button class="btn-sm renew" onclick="renovarMiembro(${m.id})">🔄 Renovar</button>${m.plan !== 'Día' ? `<button class="btn-sm whatsapp" onclick="enviarWhatsAppIndividual(${m.id})">📱 WhatsApp</button>` : ''}<button class="delete-btn" onclick="eliminarMiembro(${m.id})" style="margin-left:auto">🗑️</button></div></div>`; 
+                return `<div class="member-card${pausada?' pausada':''}"><div class="member-top"><div class="member-avatar${pausada?' pausada':''}">${pausada?'⏸️':'💪'}</div><div class="member-info"><div class="member-name">${esc(m.nombre)}</div><div class="member-phone">📱 ${esc(m.telefono)}</div><span class="member-plan-badge${pausada?' pausada':''}">${m.plan} · $${m.precio} MXN</span></div><div class="member-status"><div class="member-days ${sc}">${pausada?'⏸':(dias!==null?dias+'d':'--')}</div><div class="member-status-label">${st}</div></div></div>${diasInfo}${pH}<div class="member-actions">${pausaBtn}${!pausada?`<button class="btn-sm pay" onclick="registrarPago(${m.id})">💰 Pagar</button>`:''}<button class="btn-sm renew" onclick="renovarMiembro(${m.id})">🔄 Renovar</button><button class="btn-sm edit" onclick="editarMiembro(${m.id})">✏️ Editar</button>${m.plan !== 'Día' ? `<button class="btn-sm whatsapp" onclick="enviarWhatsAppIndividual(${m.id})">📱 WhatsApp</button>` : ''}<button class="delete-btn" onclick="eliminarMiembro(${m.id})" style="margin-left:auto">🗑️</button></div></div>`; 
             }).join(''); 
         }
 
@@ -1086,11 +1214,118 @@
                 const porVencer = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= 0 && d <= 5; }).sort((a, b) => (diasRestantes(a.vencimiento) ?? 999) - (diasRestantes(b.vencimiento) ?? 999));
                 icon.textContent = '⚠️'; title.textContent = 'Por Vencer'; sub.textContent = porVencer.length + ' miembro(s) vencen en ≤ 5 días';
                 body.innerHTML = porVencer.length === 0 ? '<div class="modal-empty"><span class="modal-empty-icon">✅</span>Nadie vence pronto</div>' : porVencer.map(m => { const d = diasRestantes(m.vencimiento); return `<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">💪 ${esc(m.nombre)}</div><div class="modal-row-detail">${m.plan} · $${m.precio} · Vence ${fmtFecha(m.vencimiento)}</div><div class="modal-row-detail">📱 ${esc(m.telefono)}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0"><div class="modal-row-badge" style="color:${d<=1?'#ef4444':'var(--orange)'}">${d===0?'HOY':d+'d'}</div><button class="btn-sm whatsapp" style="font-size:7px;padding:3px 7px" onclick="cerrarModal();enviarWhatsAppIndividual(${m.id})">📱</button></div></div>`; }).join(''); 
+            } else if (tipo === 'pausados') {
+                const pausados = miembros.filter(m => m.activo === false);
+                icon.textContent = '⏸️'; title.textContent = 'Miembros Pausados'; sub.textContent = pausados.length + ' pausado(s)';
+                body.innerHTML = pausados.length === 0 ? '<div class="modal-empty"><span class="modal-empty-icon">⏸️</span>Sin miembros pausados</div>' : pausados.map(m => `<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">⏸️ ${esc(m.nombre)}</div><div class="modal-row-detail">📱 ${esc(m.telefono)} · ${m.plan} · $${m.precio}</div><div class="modal-row-detail">💾 ${m.diasPausados || 0} días guardados</div></div><div class="modal-row-badge" style="color:var(--purple)">⏸️</div></div>`).join('');
+            } else if (tipo === 'vencidos') {
+                const vencidos = miembros.filter(m => m.activo === true && diasRestantes(m.vencimiento) !== null && diasRestantes(m.vencimiento) < 0).sort((a, b) => (diasRestantes(a.vencimiento) ?? 0) - (diasRestantes(b.vencimiento) ?? 0));
+                icon.textContent = '❌'; title.textContent = 'Miembros Vencidos'; sub.textContent = vencidos.length + ' vencido(s)';
+                body.innerHTML = vencidos.length === 0 ? '<div class="modal-empty"><span class="modal-empty-icon">✅</span>Sin miembros vencidos</div>' : vencidos.map(m => { const d = diasRestantes(m.vencimiento); return `<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">💪 ${esc(m.nombre)}</div><div class="modal-row-detail">📱 ${esc(m.telefono)} · ${m.plan} · $${m.precio}</div><div class="modal-row-detail">📅 Venció ${fmtFecha(m.vencimiento)}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0"><div class="modal-row-badge" style="color:#ef4444">${d}d</div><button class="btn-sm whatsapp" style="font-size:7px;padding:3px 7px" onclick="cerrarModal();enviarWhatsAppIndividual(${m.id})">📱</button></div></div>`; }).join('');
             }
             overlay.classList.add('show'); sheet.classList.add('show'); 
         }
 
         function cerrarModal() { document.getElementById('modalOverlay').classList.remove('show'); document.getElementById('modalSheet').classList.remove('show'); }
+
+        // ---- Modal con detalle por mes (Ingresos / Gastos / Ganancia) ----
+        let _graficaMesIdx = 'todos'; // índice del mes seleccionado, 'todos' por defecto
+        let _graficaTipo = 'ingresos';
+
+        function abrirModalGrafica(tipo) {
+            _graficaTipo = tipo;
+            _graficaMesIdx = 'todos';
+            renderModalGrafica();
+            document.getElementById('modalOverlay').classList.add('show');
+            document.getElementById('modalSheet').classList.add('show');
+        }
+
+        function renderModalGrafica() {
+            const meses = getMesesData();
+            const tipo = _graficaTipo;
+            const icon = document.getElementById('modalIcon');
+            const title = document.getElementById('modalTitle');
+            const sub = document.getElementById('modalSubtitle');
+            const body = document.getElementById('modalBody');
+
+            // Configuración por tipo
+            const config = {
+                'ingresos': { icon: '💰', titulo: 'Ingresos', color: 'var(--green)' },
+                'gastos': { icon: '💸', titulo: 'Gastos', color: '#ef4444' },
+                'ganancia': { icon: '💵', titulo: 'Ganancia Neta', color: 'var(--gold)' }
+            }[tipo];
+            icon.textContent = config.icon;
+            title.textContent = config.titulo;
+
+            // Botones de filtro por mes
+            const mesesBtns = ['<button class="filtro-btn ' + (_graficaMesIdx === 'todos' ? 'active' : '') + '" onclick="filtrarMesGrafica(\'todos\')">📊 Todos</button>'];
+            meses.forEach((m, idx) => {
+                const tieneData = (tipo === 'ingresos' ? m.ingresos : tipo === 'gastos' ? m.gastos : (m.ingresos - m.gastos)) !== 0;
+                if (tieneData) {
+                    mesesBtns.push('<button class="filtro-btn ' + (_graficaMesIdx === idx ? 'active' : '') + '" onclick="filtrarMesGrafica(' + idx + ')">' + m.nombre + '</button>');
+                }
+            });
+            const filtroHTML = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)">' + mesesBtns.join('') + '</div>';
+
+            // Filtrar datos según el mes seleccionado
+            let pagosFiltrados = [];
+            let gastosFiltrados = [];
+            miembros.forEach(m => {
+                (m.pagos || []).forEach(p => {
+                    const fp = new Date(p.fecha + 'T00:00:00');
+                    if (isNaN(fp.getTime())) return;
+                    if (_graficaMesIdx === 'todos' || (meses[_graficaMesIdx] && meses[_graficaMesIdx].mes === fp.getMonth() && meses[_graficaMesIdx].año === fp.getFullYear())) {
+                        pagosFiltrados.push({ ...p, nombre: m.nombre });
+                    }
+                });
+            });
+            gastos.forEach(g => {
+                const fg = new Date(g.fecha + 'T00:00:00');
+                if (isNaN(fg.getTime())) return;
+                if (_graficaMesIdx === 'todos' || (meses[_graficaMesIdx] && meses[_graficaMesIdx].mes === fg.getMonth() && meses[_graficaMesIdx].año === fg.getFullYear())) {
+                    gastosFiltrados.push(g);
+                }
+            });
+
+            const totalIngresos = pagosFiltrados.reduce((s, p) => s + (p.monto || 0), 0);
+            const totalGastos = gastosFiltrados.reduce((s, g) => s + (g.monto || 0), 0);
+            // Validar el índice del mes — resetear a 'todos' si no es válido
+            if (_graficaMesIdx !== 'todos' && (!meses[_graficaMesIdx] || _graficaMesIdx < 0 || _graficaMesIdx >= meses.length)) {
+                _graficaMesIdx = 'todos';
+            }
+            const mesLabel = _graficaMesIdx === 'todos' ? 'Todos los meses' : meses[_graficaMesIdx].nombre;
+
+            let contenido = '';
+            if (tipo === 'ingresos') {
+                sub.textContent = mesLabel + ' · ' + pagosFiltrados.length + ' pagos · Total: ' + fmtMonto(totalIngresos);
+                pagosFiltrados.sort((a, b) => new Date(b.fecha + 'T00:00:00') - new Date(a.fecha + 'T00:00:00'));
+                contenido = pagosFiltrados.length === 0
+                    ? '<div class="modal-empty"><span class="modal-empty-icon">💸</span>Sin ingresos en este periodo</div>'
+                    : pagosFiltrados.map(p => '<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">💪 ' + esc(p.nombre) + '</div><div class="modal-row-detail">' + (p.plan || '—') + ' · ' + fmtFecha(p.fecha) + '</div></div><div class="modal-row-badge" style="color:var(--green)">' + fmtMonto(p.monto) + '</div></div>').join('');
+            } else if (tipo === 'gastos') {
+                sub.textContent = mesLabel + ' · ' + gastosFiltrados.length + ' gastos · Total: ' + fmtMonto(totalGastos);
+                gastosFiltrados.sort((a, b) => new Date(b.fecha + 'T00:00:00') - new Date(a.fecha + 'T00:00:00'));
+                contenido = gastosFiltrados.length === 0
+                    ? '<div class="modal-empty"><span class="modal-empty-icon">✅</span>Sin gastos en este periodo</div>'
+                    : gastosFiltrados.map(g => '<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">📋 ' + esc(g.descripcion || g.categoria || 'Gasto') + '</div><div class="modal-row-detail">' + (g.categoria || '—') + ' · ' + fmtFecha(g.fecha) + (g.tipo === 'capital' ? ' · 💰 Capital' : '') + '</div></div><div class="modal-row-badge" style="color:#ef4444">' + fmtMonto(g.monto) + '</div></div>').join('');
+            } else { // ganancia
+                const neta = totalIngresos - totalGastos;
+                sub.textContent = mesLabel + ' · Ingresos: ' + fmtMonto(totalIngresos) + ' · Gastos: ' + fmtMonto(totalGastos);
+                contenido = '<div style="background:var(--surface2);border-radius:12px;padding:14px;margin-bottom:10px;text-align:center;border:1px solid ' + (neta >= 0 ? 'var(--green)' : '#ef4444') + '">' +
+                    '<div style="font-size:10px;color:var(--text3);margin-bottom:5px">Ganancia Neta</div>' +
+                    '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:32px;color:' + (neta >= 0 ? 'var(--green)' : '#ef4444') + '">' + fmtMonto(neta) + '</div>' +
+                    '</div>' +
+                    '<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">💰 Total Ingresos</div><div class="modal-row-detail">' + pagosFiltrados.length + ' pago(s)</div></div><div class="modal-row-badge" style="color:var(--green)">' + fmtMonto(totalIngresos) + '</div></div>' +
+                    '<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">💸 Total Gastos</div><div class="modal-row-detail">' + gastosFiltrados.length + ' gasto(s)</div></div><div class="modal-row-badge" style="color:#ef4444">' + fmtMonto(totalGastos) + '</div></div>';
+            }
+
+            body.innerHTML = filtroHTML + contenido;
+        }
+
+        function filtrarMesGrafica(idx) {
+            _graficaMesIdx = idx;
+            renderModalGrafica();
+        }
         (function() { let startY = 0; const sheet = document.getElementById('modalSheet'); sheet.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true }); sheet.addEventListener('touchend', e => { if (e.changedTouches[0].clientY - startY > 60) cerrarModal(); }, { passive: true }); })();
 
         // ---- CAPITAL ----
@@ -1153,7 +1388,7 @@
             const activos = miembros.filter(m => m.activo === true); const pausados = miembros.filter(m => m.activo === false); 
             const alDia = activos.filter(m => { const d = diasRestantes(m.vencimiento); return d !== null && d >= 0; }).length; 
             const vencidos = activos.filter(m => { const d = diasRestantes(m.vencimiento); return d !== null && d < 0; }).length;
-            document.getElementById('dashResumen').innerHTML = `<div class="dash-mini"><div class="dash-mini-icon">👥</div><div class="dash-mini-val">${miembros.length}</div><div class="dash-mini-lbl">Total</div></div><div class="dash-mini"><div class="dash-mini-icon">✅</div><div class="dash-mini-val" style="color:var(--green)">${alDia}</div><div class="dash-mini-lbl">Al día</div></div><div class="dash-mini"><div class="dash-mini-icon">⏸️</div><div class="dash-mini-val" style="color:var(--purple)">${pausados.length}</div><div class="dash-mini-lbl">Pausados</div></div><div class="dash-mini"><div class="dash-mini-icon">❌</div><div class="dash-mini-val" style="color:#ef4444">${vencidos}</div><div class="dash-mini-lbl">Vencidos</div></div>`; 
+            document.getElementById('dashResumen').innerHTML = `<div class="dash-mini" style="cursor:pointer" onclick="irAFiltro('todos')"><div class="dash-mini-icon">👥</div><div class="dash-mini-val">${miembros.length}</div><div class="dash-mini-lbl">Total</div></div><div class="dash-mini" style="cursor:pointer" onclick="irAFiltro('activos')"><div class="dash-mini-icon">✅</div><div class="dash-mini-val" style="color:var(--green)">${alDia}</div><div class="dash-mini-lbl">Al día</div></div><div class="dash-mini" style="cursor:pointer" onclick="irAFiltro('pausados')"><div class="dash-mini-icon">⏸️</div><div class="dash-mini-val" style="color:var(--purple)">${pausados.length}</div><div class="dash-mini-lbl">Pausados</div></div><div class="dash-mini" style="cursor:pointer" onclick="irAFiltro('vencidos')"><div class="dash-mini-icon">❌</div><div class="dash-mini-val" style="color:#ef4444">${vencidos}</div><div class="dash-mini-lbl">Vencidos</div></div>`; 
             const proximos = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= 0 && d <= 5; }).sort((a, b) => (diasRestantes(a.vencimiento) ?? 999) - (diasRestantes(b.vencimiento) ?? 999)); 
             const venDiv = document.getElementById('dashVencimientos');
             venDiv.innerHTML = proximos.length === 0 ? '<div style="text-align:center;color:var(--text3);padding:14px;font-size:11px">✅ No hay vencimientos próximos</div>' : proximos.map(m => { const d = diasRestantes(m.vencimiento); return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:var(--surface2);border-radius:8px;margin-bottom:5px;border:1px solid var(--border);font-size:11px"><div><div style="font-weight:600">${esc(m.nombre)}</div><div style="font-size:8px;color:var(--text3)">${m.plan} · $${m.precio}</div></div><button class="btn-sm whatsapp" onclick="enviarWhatsAppIndividual(${m.id})" style="font-size:7px;padding:3px 7px">📱</button><div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--orange)">${d===0?'HOY':d+'d'}</div></div>`; }).join(''); 
@@ -1196,7 +1431,27 @@
             </div>
             <div class="flex-gap">
                 <button class="btn-primary" onclick="confirmarRenovacion()" style="flex:1">✅ Renovar</button>
-                <button class="btn-primary" onclick="cerrarRenovarModal()" class="btn-primary btn-cancel">❌ Cancelar</button>
+                <button class="btn-primary btn-cancel" onclick="cerrarRenovarModal()">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Miembro -->
+    <div class="change-password-modal" id="editarModal">
+        <div class="change-password-card">
+            <div class="change-password-title">✏️ Editar Miembro</div>
+            <div class="change-password-sub">Actualiza los datos del miembro</div>
+            <div class="login-field">
+                <label class="login-label">Nombre</label>
+                <input type="text" id="edit-nombre" class="login-input" placeholder="Nombre completo">
+            </div>
+            <div class="login-field">
+                <label class="login-label">Teléfono</label>
+                <input type="tel" id="edit-telefono" class="login-input" placeholder="9999999999" inputmode="numeric">
+            </div>
+            <div class="flex-gap">
+                <button class="btn-primary" onclick="guardarEdicion()" style="flex:1">✅ Guardar</button>
+                <button class="btn-primary btn-cancel" onclick="cerrarEditarModal()">❌ Cancelar</button>
             </div>
         </div>
     </div>
