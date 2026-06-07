@@ -668,19 +668,20 @@
             } 
         }
 
-        // Migración: pausados con 0 días guardados son en realidad vencidos
+        // Migración: todos los pausados se pasan a vencidos
         function migrarPausadosVencidos() {
-            if (localStorage.getItem('kaizen-migracion-vencidos') === 'v1') return;
+            if (localStorage.getItem('kaizen-migracion-vencidos') === 'v2') return;
             let cambiados = 0;
             miembros.forEach(m => {
-                if (m.activo === false && (!m.diasPausados || m.diasPausados === 0) && m.vencimiento) {
-                    // Estaba pausado pero sin días guardados — era un vencido del sistema viejo
+                if (m.activo === false && m.vencimiento) {
+                    // Pasar todos los pausados a activos para que aparezcan como vencidos
                     m.activo = true;
                     m.fechaPausa = null;
+                    m.diasPausados = 0;
                     cambiados++;
                 }
             });
-            localStorage.setItem('kaizen-migracion-vencidos', 'v1');
+            localStorage.setItem('kaizen-migracion-vencidos', 'v2');
             if (cambiados > 0) {
                 guardarMiembros();
                 setTimeout(() => showToast('✅ ' + cambiados + ' miembros migrados a "Vencidos"'), 1500);
