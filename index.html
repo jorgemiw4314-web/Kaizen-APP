@@ -370,6 +370,7 @@
                 <div class="stat-card" onclick="abrirModalStat('porVencer')"><div class="stat-icon">⚠️</div><div class="stat-value" id="st-porVencer">0</div><div class="stat-label">Por vencer</div></div>
             </div>
             <div class="clean-box"><div><div class="clean-label">🏦 Ganancia Limpia (Ingresos - Gastos)</div><div style="font-size:7px;color:var(--text3);margin-top:1px" id="quincelaLabel">Quincena actual</div></div><div class="clean-value" id="gananciaLimpia">$0</div></div>
+            <button class="btn-primary" style="margin-top:6px;padding:8px;font-size:11px" onclick="hacerCorteCapital()">📥 Sumar ganancia de la quincena al Capital</button>
             <div class="clean-box" style="cursor:pointer;margin-top:8px" onclick="abrirCapitalModal()"><div><div class="clean-label">💰 Capital</div><div style="font-size:7px;color:var(--text3);margin-top:1px">Toca para editar capital inicial</div></div><div class="clean-value" id="capitalTotal" style="color:var(--gold)">$0</div></div>
         </div>
 
@@ -668,20 +669,19 @@
             } 
         }
 
-        // Migración: todos los pausados se pasan a vencidos
+        // Migración: pausados con 0 días guardados son en realidad vencidos
         function migrarPausadosVencidos() {
-            if (localStorage.getItem('kaizen-migracion-vencidos') === 'v2') return;
+            if (localStorage.getItem('kaizen-migracion-vencidos') === 'v1') return;
             let cambiados = 0;
             miembros.forEach(m => {
-                if (m.activo === false && m.vencimiento) {
-                    // Pasar todos los pausados a activos para que aparezcan como vencidos
+                if (m.activo === false && (!m.diasPausados || m.diasPausados === 0) && m.vencimiento) {
+                    // Estaba pausado pero sin días guardados — era un vencido del sistema viejo
                     m.activo = true;
                     m.fechaPausa = null;
-                    m.diasPausados = 0;
                     cambiados++;
                 }
             });
-            localStorage.setItem('kaizen-migracion-vencidos', 'v2');
+            localStorage.setItem('kaizen-migracion-vencidos', 'v1');
             if (cambiados > 0) {
                 guardarMiembros();
                 setTimeout(() => showToast('✅ ' + cambiados + ' miembros migrados a "Vencidos"'), 1500);
@@ -1348,6 +1348,41 @@
             document.getElementById('capitalModal').classList.add('show');
         }
         function cerrarCapitalModal() { document.getElementById('capitalModal').classList.remove('show'); }
+
+        // ---- CORTE DE QUINCENA (sumar ganancia limpia al Capital) ----
+        function getQuincenaId() {
+            const fechaActual = new Date();
+            return fechaActual.getFullYear() + '-' + fechaActual.getMonth() + '-' + (fechaActual.getDate() <= 15 ? 1 : 2);
+        }
+        function getCortesCapital() { try { return JSON.parse(localStorage.getItem('kaizen-cortes-capital') || '[]'); } catch (e) { return []; } }
+        function guardarCortesCapital(arr) { localStorage.setItem('kaizen-cortes-capital', JSON.stringify(arr)); }
+        function hacerCorteCapital() {
+            const ingresosMes = miembros.reduce((t, m) => t + (m.pagos || []).reduce((s, p) => enQuincena(p.fecha) ? s + p.monto : s, 0), 0);
+            const gastosMes = gastos.filter(g => enQuincena(g.fecha) && (g.tipo === 'ganancia' || !g.tipo)).reduce((s, g) => s + g.monto, 0);
+            const ganancia = ingresosMes - gastosMes;
+            const q = getQuincena();
+            const qId = getQuincenaId();
+            const cortes = getCortesCapital();
+            const yaHecho = cortes.find(c => c.quincenaId === qId);
+
+            if (ganancia <= 0) { showToast('⚠️ No hay ganancia positiva que sumar esta quincena'); return; }
+
+            if (yaHecho) {
+                const confirmar = confirm('⚠️ Ya hiciste un corte en ' + q.label + ' por ' + fmtMonto(yaHecho.monto) + ' el ' + fmtFecha(yaHecho.fecha) + '.\n\n¿Quieres sumar ' + fmtMonto(ganancia) + ' de nuevo al Capital? (revisa que no sea un error antes de confirmar)');
+                if (!confirmar) return;
+            } else {
+                const nuevoCapital = getCapitalInicial() + ganancia;
+                const confirmar = confirm('💰 Corte de ' + q.label + '\n\nGanancia limpia actual: ' + fmtMonto(ganancia) + '\nCapital actual: ' + fmtMonto(getCapitalInicial()) + '\nCapital nuevo: ' + fmtMonto(nuevoCapital) + '\n\n¿Confirmar y sumar la ganancia al Capital?');
+                if (!confirmar) return;
+            }
+
+            const nuevoCapital = getCapitalInicial() + ganancia;
+            localStorage.setItem('kaizen-capital-inicial', nuevoCapital);
+            cortes.push({ fecha: hoy(), quincenaId: qId, quincenaLabel: q.label, monto: ganancia });
+            guardarCortesCapital(cortes);
+            actualizarCapital();
+            showToast('✅ Se sumaron ' + fmtMonto(ganancia) + ' al Capital · Nuevo capital: ' + fmtMonto(nuevoCapital));
+        }
         function guardarCapital() {
             const val = parseFloat(document.getElementById('capitalInicialInput').value) || 0;
             localStorage.setItem('kaizen-capital-inicial', val);
