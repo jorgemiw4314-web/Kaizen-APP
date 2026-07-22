@@ -23,6 +23,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;900&family=Bebas+Neue&family=Noto+Sans+JP:wght@900&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" defer>
     </script>
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
     <style>
         :root {
             --bg: #0a0a0a;
@@ -370,8 +372,11 @@
                 <div class="stat-card" onclick="abrirModalStat('porVencer')"><div class="stat-icon">⚠️</div><div class="stat-value" id="st-porVencer">0</div><div class="stat-label">Por vencer</div></div>
             </div>
             <div class="clean-box"><div><div class="clean-label">🏦 Ganancia Limpia (Ingresos - Gastos)</div><div style="font-size:7px;color:var(--text3);margin-top:1px" id="quincelaLabel">Quincena actual</div></div><div class="clean-value" id="gananciaLimpia">$0</div></div>
-            <button class="btn-primary" style="margin-top:6px;padding:8px;font-size:11px" onclick="hacerCorteCapital()">📥 Sumar ganancia de la quincena al Capital</button>
-            <div class="clean-box" style="cursor:pointer;margin-top:8px" onclick="abrirCapitalModal()"><div><div class="clean-label">💰 Capital</div><div style="font-size:7px;color:var(--text3);margin-top:1px">Toca para editar capital inicial</div></div><div class="clean-value" id="capitalTotal" style="color:var(--gold)">$0</div></div>
+            <div class="clean-box" style="cursor:pointer;margin-top:8px" onclick="abrirCapitalModal()"><div><div class="clean-label">💰 Capital</div><div style="font-size:7px;color:var(--text3);margin-top:1px" id="capitalSubLabel">Se actualiza solo al cerrar cada quincena · toca para editar</div></div><div class="clean-value" id="capitalTotal" style="color:var(--gold)">$0</div></div>
+            <div style="display:flex;gap:6px;margin-top:4px;align-items:center;justify-content:space-between">
+                <a href="#" onclick="mostrarHistorialCortes();return false" style="font-size:9px;color:var(--text3);text-decoration:underline">Ver historial de cierres</a>
+                <a href="#" onclick="abrirReporteModal();return false" style="font-size:9px;color:var(--text3);text-decoration:underline">📄 Exportar reporte</a>
+            </div>
         </div>
 
         <div class="tabs-wrap"><div class="tabs">
@@ -427,10 +432,29 @@
                         <label class="login-label">Capital inicial ($)</label>
                         <input type="number" id="capitalInicialInput" class="login-input" placeholder="0" min="0" style="font-size:18px">
                     </div>
-                    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">El sistema sumará automáticamente todos los pagos registrados en la app</div>
+                    <div style="font-size:11px;color:var(--text3);margin-bottom:12px">Al cerrar cada quincena, la ganancia (o pérdida) se suma sola aquí. Los gastos tipo "capital" también se restan solos.</div>
                     <div class="flex-gap">
                         <button class="btn-primary" onclick="guardarCapital()" style="flex:1">✅ Guardar</button>
                         <button class="btn-primary btn-cancel" onclick="cerrarCapitalModal()">❌ Cancelar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal Reporte -->
+            <div class="change-password-modal" id="reporteModal">
+                <div class="change-password-card">
+                    <div class="change-password-title">📄 Exportar Reporte</div>
+                    <div class="change-password-sub">Resumen general del mes que elijas</div>
+                    <div class="login-field">
+                        <label class="login-label">Mes</label>
+                        <select id="reporteMesSelect" class="login-input" style="font-size:14px"></select>
+                    </div>
+                    <div class="flex-gap">
+                        <button class="btn-primary" onclick="generarReportePDF()" style="flex:1">📕 PDF</button>
+                        <button class="btn-primary" onclick="generarReporteExcel()" style="flex:1">📗 Excel</button>
+                    </div>
+                    <div class="flex-gap" style="margin-top:8px">
+                        <button class="btn-primary btn-cancel" onclick="cerrarReporteModal()" style="flex:1">❌ Cerrar</button>
                     </div>
                 </div>
             </div>
@@ -549,11 +573,13 @@
             if (confirm('¿Cerrar sesión como administrador?')) {
                 // Cancelar suscripción a Firebase
                 if (_fbUnsubscribe) { try { _fbUnsubscribe(); } catch(e) {} _fbUnsubscribe = null; }
+                _corteVerificadoConFirebase = false;
                 // Limpiar datos de localStorage para evitar fugas entre usuarios
                 localStorage.removeItem('kaizen-miembros');
                 localStorage.removeItem('kaizen-gastos');
                 localStorage.removeItem('kaizen-notif-historial');
                 localStorage.removeItem('kaizen-capital-inicial');
+                localStorage.removeItem('kaizen-cortes-capital');
                 localStorage.removeItem('kaizen-migracion-vencidos');
                 // Limpiar variables en memoria
                 miembros = []; gastos = []; historialNotificaciones = [];
@@ -655,7 +681,7 @@
         };
         let planSeleccionado = 'Mes', precioSeleccionado = 500, diasSeleccionados = 1, tipoSeleccionado = 'meses';
         let miembros = [], gastos = [], historialNotificaciones = [], gananciasChart = null, filtroActual = 'todos', busquedaActual = '';
-        let _fbSyncTimer = null, _fbBloqueado = false, _fbUnsubscribe = null;
+        let _fbSyncTimer = null, _fbBloqueado = false, _fbUnsubscribe = null, _corteVerificadoConFirebase = false;
 
         function cargarDatos() { 
             try { 
@@ -854,6 +880,7 @@
                         gastos: gastos,
                         historialNotificaciones: historialNotificaciones,
                         capitalInicial: getCapitalInicial(),
+                        cortesCapital: getCortesCapital(),
                         updatedAt: new Date().toISOString()
                     }).catch(e => console.warn('FB sync error:', e));
                 } catch (e) { console.warn('FB sync error:', e); }
@@ -879,6 +906,8 @@
                         if (Array.isArray(data.gastos)) { gastos = data.gastos; localStorage.setItem('kaizen-gastos', JSON.stringify(gastos)); }
                         if (Array.isArray(data.historialNotificaciones)) { historialNotificaciones = data.historialNotificaciones; localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones)); }
                         if (data.capitalInicial !== undefined) { localStorage.setItem('kaizen-capital-inicial', data.capitalInicial); }
+                        if (Array.isArray(data.cortesCapital)) { localStorage.setItem('kaizen-cortes-capital', JSON.stringify(data.cortesCapital)); }
+                        if (!_corteVerificadoConFirebase) { _corteVerificadoConFirebase = true; verificarCortesAutomaticos(); }
                         actualizarTodo();
                     } finally {
                         _fbBloqueado = false;
@@ -1348,41 +1377,6 @@
             document.getElementById('capitalModal').classList.add('show');
         }
         function cerrarCapitalModal() { document.getElementById('capitalModal').classList.remove('show'); }
-
-        // ---- CORTE DE QUINCENA (sumar ganancia limpia al Capital) ----
-        function getQuincenaId() {
-            const fechaActual = new Date();
-            return fechaActual.getFullYear() + '-' + fechaActual.getMonth() + '-' + (fechaActual.getDate() <= 15 ? 1 : 2);
-        }
-        function getCortesCapital() { try { return JSON.parse(localStorage.getItem('kaizen-cortes-capital') || '[]'); } catch (e) { return []; } }
-        function guardarCortesCapital(arr) { localStorage.setItem('kaizen-cortes-capital', JSON.stringify(arr)); }
-        function hacerCorteCapital() {
-            const ingresosMes = miembros.reduce((t, m) => t + (m.pagos || []).reduce((s, p) => enQuincena(p.fecha) ? s + p.monto : s, 0), 0);
-            const gastosMes = gastos.filter(g => enQuincena(g.fecha) && (g.tipo === 'ganancia' || !g.tipo)).reduce((s, g) => s + g.monto, 0);
-            const ganancia = ingresosMes - gastosMes;
-            const q = getQuincena();
-            const qId = getQuincenaId();
-            const cortes = getCortesCapital();
-            const yaHecho = cortes.find(c => c.quincenaId === qId);
-
-            if (ganancia <= 0) { showToast('⚠️ No hay ganancia positiva que sumar esta quincena'); return; }
-
-            if (yaHecho) {
-                const confirmar = confirm('⚠️ Ya hiciste un corte en ' + q.label + ' por ' + fmtMonto(yaHecho.monto) + ' el ' + fmtFecha(yaHecho.fecha) + '.\n\n¿Quieres sumar ' + fmtMonto(ganancia) + ' de nuevo al Capital? (revisa que no sea un error antes de confirmar)');
-                if (!confirmar) return;
-            } else {
-                const nuevoCapital = getCapitalInicial() + ganancia;
-                const confirmar = confirm('💰 Corte de ' + q.label + '\n\nGanancia limpia actual: ' + fmtMonto(ganancia) + '\nCapital actual: ' + fmtMonto(getCapitalInicial()) + '\nCapital nuevo: ' + fmtMonto(nuevoCapital) + '\n\n¿Confirmar y sumar la ganancia al Capital?');
-                if (!confirmar) return;
-            }
-
-            const nuevoCapital = getCapitalInicial() + ganancia;
-            localStorage.setItem('kaizen-capital-inicial', nuevoCapital);
-            cortes.push({ fecha: hoy(), quincenaId: qId, quincenaLabel: q.label, monto: ganancia });
-            guardarCortesCapital(cortes);
-            actualizarCapital();
-            showToast('✅ Se sumaron ' + fmtMonto(ganancia) + ' al Capital · Nuevo capital: ' + fmtMonto(nuevoCapital));
-        }
         function guardarCapital() {
             const val = parseFloat(document.getElementById('capitalInicialInput').value) || 0;
             localStorage.setItem('kaizen-capital-inicial', val);
@@ -1390,6 +1384,185 @@
             cerrarCapitalModal();
             actualizarCapital();
             showToast('💰 Capital guardado');
+        }
+
+        // ---- CIERRE AUTOMÁTICO DE QUINCENA (suma la ganancia limpia al Capital) ----
+        const NOMBRES_MES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+
+        function quincenaInfo(fecha) {
+            const dia = fecha.getDate(); const mes = fecha.getMonth(); const año = fecha.getFullYear();
+            if (dia <= 15) return { inicio: new Date(año, mes, 1, 0, 0, 0), fin: new Date(año, mes, 15, 23, 59, 59), mitad: 1, mes, año };
+            const ultimoDia = new Date(año, mes + 1, 0).getDate();
+            return { inicio: new Date(año, mes, 16, 0, 0, 0), fin: new Date(año, mes, ultimoDia, 23, 59, 59), mitad: 2, mes, año };
+        }
+        function idQuincenaInfo(info) { return info.año + '-' + info.mes + '-' + info.mitad; }
+        function labelQuincenaInfo(info) { return (info.mitad === 1 ? '1ra quincena' : '2da quincena') + ' · ' + NOMBRES_MES[info.mes] + ' ' + info.año; }
+        function quincenaInfoAnterior(info) {
+            if (info.mitad === 1) {
+                const mesAnt = info.mes === 0 ? 11 : info.mes - 1;
+                const añoAnt = info.mes === 0 ? info.año - 1 : info.año;
+                const ultimoDia = new Date(añoAnt, mesAnt + 1, 0).getDate();
+                return { inicio: new Date(añoAnt, mesAnt, 16, 0, 0, 0), fin: new Date(añoAnt, mesAnt, ultimoDia, 23, 59, 59), mitad: 2, mes: mesAnt, año: añoAnt };
+            }
+            return { inicio: new Date(info.año, info.mes, 1, 0, 0, 0), fin: new Date(info.año, info.mes, 15, 23, 59, 59), mitad: 1, mes: info.mes, año: info.año };
+        }
+        function gananciaDeQuincena(info) {
+            const ingresos = miembros.reduce((t, m) => t + (m.pagos || []).reduce((s, p) => {
+                const fp = new Date(p.fecha + 'T00:00:00');
+                return (!isNaN(fp.getTime()) && fp >= info.inicio && fp <= info.fin) ? s + p.monto : s;
+            }, 0), 0);
+            const gastosQ = gastos.filter(g => {
+                const fg = new Date(g.fecha + 'T00:00:00');
+                return !isNaN(fg.getTime()) && fg >= info.inicio && fg <= info.fin && (g.tipo === 'ganancia' || !g.tipo);
+            }).reduce((s, g) => s + g.monto, 0);
+            return ingresos - gastosQ;
+        }
+        function getCortesCapital() { try { const c = JSON.parse(localStorage.getItem('kaizen-cortes-capital') || '[]'); return Array.isArray(c) ? c : []; } catch (e) { return []; } }
+        function guardarCortesCapital(arr) { localStorage.setItem('kaizen-cortes-capital', JSON.stringify(arr)); }
+
+        function verificarCortesAutomaticos() {
+            let cortes = getCortesCapital();
+            const infoAnterior = quincenaInfoAnterior(quincenaInfo(new Date()));
+
+            // Primera vez que corre este sistema: no reconstruye meses pasados de golpe,
+            // solo marca desde dónde empieza a contar hacia adelante.
+            if (cortes.length === 0) {
+                cortes.push({ fecha: hoy(), quincenaId: idQuincenaInfo(infoAnterior), quincenaLabel: labelQuincenaInfo(infoAnterior), monto: 0, automatico: true, inicial: true });
+                guardarCortesCapital(cortes);
+                syncFirebase();
+                return;
+            }
+
+            const idsHechos = new Set(cortes.map(c => c.quincenaId));
+            const pendientes = [];
+            let info = infoAnterior;
+            let vueltas = 0;
+            while (!idsHechos.has(idQuincenaInfo(info)) && vueltas < 24) {
+                pendientes.push(info);
+                info = quincenaInfoAnterior(info);
+                vueltas++;
+            }
+            if (pendientes.length === 0) return;
+            pendientes.reverse();
+
+            let capitalActual = getCapitalInicial();
+            let totalAplicado = 0;
+            pendientes.forEach(p => {
+                const ganancia = gananciaDeQuincena(p);
+                capitalActual += ganancia;
+                totalAplicado += ganancia;
+                cortes.push({ fecha: hoy(), quincenaId: idQuincenaInfo(p), quincenaLabel: labelQuincenaInfo(p), monto: ganancia, automatico: true });
+            });
+            localStorage.setItem('kaizen-capital-inicial', capitalActual);
+            guardarCortesCapital(cortes);
+            syncFirebase();
+            actualizarCapital();
+            if (totalAplicado !== 0) {
+                showToast((totalAplicado >= 0 ? '✅ Se sumaron ' : '⚠️ Se restaron ') + fmtMonto(Math.abs(totalAplicado)) + ' al Capital (cierre automático de ' + pendientes.length + (pendientes.length > 1 ? ' quincenas' : ' quincena') + ')');
+            }
+        }
+
+        function mostrarHistorialCortes() {
+            const cortes = getCortesCapital().slice().reverse();
+            if (cortes.length === 0) { alert('Todavía no hay cierres registrados.'); return; }
+            const texto = cortes.slice(0, 15).map(c => {
+                if (c.inicial) return c.quincenaLabel + ': punto de partida (sin movimiento)';
+                return c.quincenaLabel + ': ' + (c.monto >= 0 ? '+' : '') + fmtMonto(c.monto);
+            }).join('\n');
+            alert('📜 Historial de cierres de quincena\n\n' + texto);
+        }
+
+        // ---- REPORTE EXPORTABLE (PDF / Excel) ----
+        function abrirReporteModal() {
+            const meses = getMesesData(); // ordenado de más viejo a más nuevo, 12 meses
+            const sel = document.getElementById('reporteMesSelect');
+            sel.innerHTML = meses.slice().reverse().map(m => `<option value="${m.año}-${m.mes}">${m.nombre}</option>`).join('');
+            document.getElementById('reporteModal').classList.add('show');
+        }
+        function cerrarReporteModal() { document.getElementById('reporteModal').classList.remove('show'); }
+
+        function calcularResumenMesAnio(año, mes) {
+            const inicio = new Date(año, mes, 1, 0, 0, 0);
+            const fin = new Date(año, mes + 1, 0, 23, 59, 59);
+            const ingresos = miembros.reduce((t, m) => t + (m.pagos || []).reduce((s, p) => {
+                const fp = new Date(p.fecha + 'T00:00:00');
+                return (!isNaN(fp.getTime()) && fp >= inicio && fp <= fin) ? s + p.monto : s;
+            }, 0), 0);
+            const gastosOperativos = gastos.filter(g => {
+                const fg = new Date(g.fecha + 'T00:00:00');
+                return !isNaN(fg.getTime()) && fg >= inicio && fg <= fin && (g.tipo === 'ganancia' || !g.tipo);
+            }).reduce((s, g) => s + g.monto, 0);
+            const gastosCapital = gastos.filter(g => {
+                const fg = new Date(g.fecha + 'T00:00:00');
+                return !isNaN(fg.getTime()) && fg >= inicio && fg <= fin && g.tipo === 'capital';
+            }).reduce((s, g) => s + g.monto, 0);
+            const gananciaNeta = ingresos - gastosOperativos;
+            return {
+                nombreMes: NOMBRES_MES[mes] + ' ' + año,
+                ingresos, gastosOperativos, gastosCapital, gananciaNeta,
+                totalMiembros: miembros.length,
+                activos: miembros.filter(m => m.activo === true).length,
+                pausados: miembros.filter(m => m.activo === false).length,
+                capitalActual: getCapitalInicial() + getMovimientosCapital()
+            };
+        }
+
+        function generarReportePDF() {
+            const sel = document.getElementById('reporteMesSelect');
+            const [año, mes] = sel.value.split('-').map(Number);
+            const r = calcularResumenMesAnio(año, mes);
+            if (!window.jspdf) { showToast('⚠️ El generador de PDF no cargó, intenta de nuevo'); return; }
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.setFontSize(18); doc.text('KAIZEN FITNESS', 14, 18);
+            doc.setFontSize(12); doc.text('Reporte de ' + r.nombreMes, 14, 26);
+            doc.setFontSize(9); doc.setTextColor(120); doc.text('Generado el ' + fmtFecha(hoy()), 14, 32); doc.setTextColor(0);
+            let y = 44;
+            const filas = [
+                ['Miembros totales', String(r.totalMiembros)],
+                ['Miembros activos', String(r.activos)],
+                ['Miembros pausados', String(r.pausados)],
+                ['Ingresos del mes', fmtMonto(r.ingresos)],
+                ['Gastos operativos', fmtMonto(r.gastosOperativos)],
+                ['Gastos de capital', fmtMonto(r.gastosCapital)],
+                ['Ganancia neta del mes', fmtMonto(r.gananciaNeta)],
+                ['Capital actual (hoy)', fmtMonto(r.capitalActual)]
+            ];
+            doc.setFontSize(11);
+            filas.forEach(f => {
+                doc.setFont(undefined, 'bold'); doc.text(f[0] + ':', 14, y);
+                doc.setFont(undefined, 'normal'); doc.text(f[1], 110, y);
+                y += 9;
+            });
+            doc.save('Reporte_Kaizen_' + r.nombreMes.replace(/\s+/g, '_') + '.pdf');
+            showToast('📕 Reporte PDF generado');
+        }
+
+        function generarReporteExcel() {
+            const sel = document.getElementById('reporteMesSelect');
+            const [año, mes] = sel.value.split('-').map(Number);
+            const r = calcularResumenMesAnio(año, mes);
+            if (!window.XLSX) { showToast('⚠️ El generador de Excel no cargó, intenta de nuevo'); return; }
+            const datos = [
+                ['KAIZEN FITNESS - Reporte de ' + r.nombreMes],
+                ['Generado el', fmtFecha(hoy())],
+                [],
+                ['Concepto', 'Valor'],
+                ['Miembros totales', r.totalMiembros],
+                ['Miembros activos', r.activos],
+                ['Miembros pausados', r.pausados],
+                ['Ingresos del mes', r.ingresos],
+                ['Gastos operativos', r.gastosOperativos],
+                ['Gastos de capital', r.gastosCapital],
+                ['Ganancia neta del mes', r.gananciaNeta],
+                ['Capital actual (hoy)', r.capitalActual]
+            ];
+            const ws = XLSX.utils.aoa_to_sheet(datos);
+            ws['!cols'] = [{ wch: 24 }, { wch: 16 }];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Resumen');
+            XLSX.writeFile(wb, 'Reporte_Kaizen_' + r.nombreMes.replace(/\s+/g, '_') + '.xlsx');
+            showToast('📗 Reporte Excel generado');
         }
 
         function actualizarTodo() { 
@@ -1436,7 +1609,7 @@
             actualizarFecha(); cargarDatos(); 
             const mInicio = document.getElementById('m-inicio'); const gFecha = document.getElementById('g-fecha'); 
             if (mInicio) mInicio.value = hoy(); if (gFecha) gFecha.value = hoy(); 
-            actualizarVencimiento(); actualizarTodo();
+            actualizarVencimiento(); verificarCortesAutomaticos(); actualizarTodo();
             setTimeout(suscribirFirebase, 1000);
         }
     </script>
