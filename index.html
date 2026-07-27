@@ -362,7 +362,7 @@
     </div>
 
     <div class="app-container" id="appContainer">
-        <div class="hdr"><div class="hdr-inner"><div class="logo-wrap"><div class="logo-icon">改</div><div><div class="logo-text">KAIZEN</div><div class="logo-sub">FITNESS</div></div></div><div class="hdr-right"><button class="change-pass-btn" onclick="abrirCambioPassword()" title="Cambiar contraseña">🔑</button><button class="logout-btn" onclick="logout()" title="Cerrar sesión">🚪 Salir</button><button class="alert-badge" id="alertBadge" onclick="showTab('notificaciones', document.querySelectorAll('.tab-btn')[3])">🔔 <span id="alertCount">0</span></button><div class="hdr-date" id="hdrDate"></div></div></div></div>
+        <div class="hdr"><div class="hdr-inner"><div class="logo-wrap"><div class="logo-icon">改</div><div><div class="logo-text">KAIZEN</div><div class="logo-sub">FITNESS</div></div></div><div class="hdr-right"><button class="change-pass-btn" onclick="forzarSincronizacionFirebase()" title="Traer datos de Firebase">🔄</button><button class="change-pass-btn" onclick="descargarRespaldo()" title="Descargar respaldo">💾</button><button class="change-pass-btn" onclick="abrirRestaurarModal()" title="Restaurar respaldo">📥</button><button class="change-pass-btn" onclick="abrirCambioPassword()" title="Cambiar contraseña">🔑</button><button class="logout-btn" onclick="logout()" title="Cerrar sesión">🚪 Salir</button><button class="alert-badge" id="alertBadge" onclick="showTab('notificaciones', document.querySelectorAll('.tab-btn')[3])">🔔 <span id="alertCount">0</span></button><div class="hdr-date" id="hdrDate"></div></div></div></div>
 
         <div class="sbar">
             <div class="stat-row">
@@ -890,6 +890,106 @@
         function guardarMiembros() { localStorage.setItem('kaizen-miembros', JSON.stringify(miembros)); syncFirebase(); }
         function guardarGastos() { localStorage.setItem('kaizen-gastos', JSON.stringify(gastos)); syncFirebase(); }
         function guardarHistorial() { localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones)); syncFirebase(); }
+
+        // ===== RESPALDO / RESTAURAR =====
+        function descargarRespaldo() {
+            try {
+                const respaldo = {
+                    fecha_respaldo: new Date().toISOString(),
+                    usuario: getStoredUser(),
+                    miembros: miembros || [],
+                    gastos: gastos || [],
+                    historialNotificaciones: historialNotificaciones || [],
+                    capitalInicial: getCapitalInicial(),
+                    cortesCapital: getCortesCapital()
+                };
+                const blob = new Blob([JSON.stringify(respaldo, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                const fecha = new Date().toISOString().slice(0, 10);
+                a.href = url;
+                a.download = `respaldo_kaizen_${fecha}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showToast('💾 Respaldo descargado');
+            } catch (e) {
+                console.error('Error al descargar respaldo:', e);
+                showToast('⚠️ No se pudo generar el respaldo');
+            }
+        }
+
+        function abrirRestaurarModal() {
+            document.getElementById('restaurarModal').classList.add('show');
+        }
+        function cerrarRestaurarModal() {
+            document.getElementById('restaurarModal').classList.remove('show');
+            const input = document.getElementById('restaurarArchivo');
+            if (input) input.value = '';
+        }
+
+        function procesarArchivoRestaurar(input) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (!data || (typeof data !== 'object')) throw new Error('Formato inválido');
+                    if (!confirm(`Este respaldo es del ${data.fecha_respaldo ? new Date(data.fecha_respaldo).toLocaleString('es-MX') : 'fecha desconocida'} y tiene ${Array.isArray(data.miembros) ? data.miembros.length : 0} miembros y ${Array.isArray(data.gastos) ? data.gastos.length : 0} movimientos.\n\n¿Restaurar estos datos? Esto reemplazará TODO lo que tienes ahora, tanto local como en Firebase.`)) return;
+
+                    if (Array.isArray(data.miembros)) miembros = data.miembros;
+                    if (Array.isArray(data.gastos)) gastos = data.gastos;
+                    if (Array.isArray(data.historialNotificaciones)) historialNotificaciones = data.historialNotificaciones;
+
+                    localStorage.setItem('kaizen-miembros', JSON.stringify(miembros));
+                    localStorage.setItem('kaizen-gastos', JSON.stringify(gastos));
+                    localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones));
+                    if (data.capitalInicial !== undefined) localStorage.setItem('kaizen-capital-inicial', data.capitalInicial);
+                    if (Array.isArray(data.cortesCapital)) localStorage.setItem('kaizen-cortes-capital', JSON.stringify(data.cortesCapital));
+
+                    // Subir a Firebase para que quede como la fuente de verdad
+                    syncFirebase();
+                    actualizarTodo();
+                    cerrarRestaurarModal();
+                    showToast('✅ Datos restaurados correctamente');
+                } catch (err) {
+                    console.error('Error al restaurar:', err);
+                    showToast('⚠️ El archivo no es un respaldo válido');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function forzarSincronizacionFirebase() {
+            if (!window._fb) { showToast('⚠️ Firebase no está listo, espera un momento'); return; }
+            try {
+                const { db, doc, getDoc } = window._fb;
+                if (typeof getDoc !== 'function') { showToast('⚠️ No se pudo leer Firebase'); return; }
+                showToast('⏳ Consultando Firebase...');
+                getDoc(doc(db, 'kaizen', getUserDocId())).then(snap => {
+                    if (!snap.exists) { showToast('⚠️ No hay documento en Firebase para este usuario'); return; }
+                    const data = snap.data();
+                    if (!confirm(`Firebase tiene ${Array.isArray(data.miembros) ? data.miembros.length : 0} miembros y ${Array.isArray(data.gastos) ? data.gastos.length : 0} movimientos guardados.\n\n¿Traer estos datos y reemplazar lo que ves ahora en la app?`)) return;
+
+                    if (Array.isArray(data.miembros)) { miembros = data.miembros; localStorage.setItem('kaizen-miembros', JSON.stringify(miembros)); }
+                    if (Array.isArray(data.gastos)) { gastos = data.gastos; localStorage.setItem('kaizen-gastos', JSON.stringify(gastos)); }
+                    if (Array.isArray(data.historialNotificaciones)) { historialNotificaciones = data.historialNotificaciones; localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones)); }
+                    if (data.capitalInicial !== undefined) localStorage.setItem('kaizen-capital-inicial', data.capitalInicial);
+                    if (Array.isArray(data.cortesCapital)) localStorage.setItem('kaizen-cortes-capital', JSON.stringify(data.cortesCapital));
+
+                    actualizarTodo();
+                    showToast('✅ Datos traídos desde Firebase');
+                }).catch(err => {
+                    console.error('Error al forzar sync:', err);
+                    showToast('⚠️ Error al consultar Firebase');
+                });
+            } catch (e) {
+                console.error(e);
+                showToast('⚠️ Error inesperado');
+            }
+        }
 
         function suscribirFirebase() {
             if (!window._fb) { setTimeout(suscribirFirebase, 500); return; }
@@ -1613,6 +1713,20 @@
             setTimeout(suscribirFirebase, 1000);
         }
     </script>
+    <!-- Modal Restaurar Respaldo -->
+    <div class="change-password-modal" id="restaurarModal">
+        <div class="change-password-card">
+            <div class="change-password-title">📥 Restaurar Respaldo</div>
+            <div class="change-password-sub">Selecciona el archivo .json que descargaste antes. Esto reemplazará todos tus datos actuales.</div>
+            <div class="login-field" style="margin-top:16px">
+                <input type="file" id="restaurarArchivo" accept="application/json,.json" class="login-input" onchange="procesarArchivoRestaurar(this)" style="padding:10px">
+            </div>
+            <div class="flex-gap">
+                <button class="btn-primary btn-cancel" onclick="cerrarRestaurarModal()" style="flex:1">❌ Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Renovar Membresía -->
     <div class="change-password-modal" id="renovarModal">
         <div class="change-password-card">
