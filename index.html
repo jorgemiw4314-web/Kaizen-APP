@@ -362,7 +362,7 @@
     </div>
 
     <div class="app-container" id="appContainer">
-        <div class="hdr"><div class="hdr-inner"><div class="logo-wrap"><div class="logo-icon">改</div><div><div class="logo-text">KAIZEN</div><div class="logo-sub">FITNESS</div></div></div><div class="hdr-right"><button class="change-pass-btn" onclick="forzarSincronizacionFirebase()" title="Traer datos de Firebase">🔄</button><button class="change-pass-btn" onclick="descargarRespaldo()" title="Descargar respaldo">💾</button><button class="change-pass-btn" onclick="abrirRestaurarModal()" title="Restaurar respaldo">📥</button><button class="change-pass-btn" onclick="abrirCambioPassword()" title="Cambiar contraseña">🔑</button><button class="logout-btn" onclick="logout()" title="Cerrar sesión">🚪 Salir</button><button class="alert-badge" id="alertBadge" onclick="showTab('notificaciones', document.querySelectorAll('.tab-btn')[3])">🔔 <span id="alertCount">0</span></button><div class="hdr-date" id="hdrDate"></div></div></div></div>
+        <div class="hdr"><div class="hdr-inner"><div class="logo-wrap"><div class="logo-icon">改</div><div><div class="logo-text">KAIZEN</div><div class="logo-sub">FITNESS</div></div></div><div class="hdr-right"><button class="change-pass-btn" onclick="recuperarDatosAntiguos()" title="Recuperar datos antiguos" style="background:#c0392b">📦</button><button class="change-pass-btn" onclick="forzarSincronizacionFirebase()" title="Traer datos de Firebase">🔄</button><button class="change-pass-btn" onclick="descargarRespaldo()" title="Descargar respaldo">💾</button><button class="change-pass-btn" onclick="abrirRestaurarModal()" title="Restaurar respaldo">📥</button><button class="change-pass-btn" onclick="abrirCambioPassword()" title="Cambiar contraseña">🔑</button><button class="logout-btn" onclick="logout()" title="Cerrar sesión">🚪 Salir</button><button class="alert-badge" id="alertBadge" onclick="showTab('notificaciones', document.querySelectorAll('.tab-btn')[3])">🔔 <span id="alertCount">0</span></button><div class="hdr-date" id="hdrDate"></div></div></div></div>
 
         <div class="sbar">
             <div class="stat-row">
@@ -960,6 +960,35 @@
                 }
             };
             reader.readAsText(file);
+        }
+
+        function recuperarDatosAntiguos() {
+            if (!window._fb) { showToast('⚠️ Firebase no está listo, espera un momento'); return; }
+            try {
+                const { db, doc, getDoc } = window._fb;
+                showToast('⏳ Buscando datos antiguos...');
+                getDoc(doc(db, 'kaizen', 'datos')).then(snap => {
+                    if (!snap.exists) { showToast('⚠️ No existe el documento "datos"'); return; }
+                    const data = snap.data();
+                    if (!confirm(`El documento antiguo "datos" tiene ${Array.isArray(data.miembros) ? data.miembros.length : 0} miembros y ${Array.isArray(data.gastos) ? data.gastos.length : 0} movimientos.\n\n¿Traer estos datos a TU usuario actual (${getStoredUser()}) y reemplazar lo que ves ahora?`)) return;
+
+                    if (Array.isArray(data.miembros)) { miembros = data.miembros; localStorage.setItem('kaizen-miembros', JSON.stringify(miembros)); }
+                    if (Array.isArray(data.gastos)) { gastos = data.gastos; localStorage.setItem('kaizen-gastos', JSON.stringify(gastos)); }
+                    if (Array.isArray(data.historialNotificaciones)) { historialNotificaciones = data.historialNotificaciones; localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones)); }
+                    if (data.capitalInicial !== undefined) localStorage.setItem('kaizen-capital-inicial', data.capitalInicial);
+                    if (Array.isArray(data.cortesCapital)) localStorage.setItem('kaizen-cortes-capital', JSON.stringify(data.cortesCapital));
+
+                    actualizarTodo();
+                    syncFirebase();
+                    showToast('✅ Datos antiguos recuperados y guardados en tu usuario');
+                }).catch(err => {
+                    console.error('Error al recuperar datos antiguos:', err);
+                    showToast('⚠️ Error al consultar Firebase');
+                });
+            } catch (e) {
+                console.error(e);
+                showToast('⚠️ Error inesperado');
+            }
         }
 
         function forzarSincronizacionFirebase() {
