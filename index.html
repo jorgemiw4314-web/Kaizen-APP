@@ -107,6 +107,12 @@
         .login-field { margin-bottom: 20px; }
         .login-label { display: block; font-size: 10px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
         .login-input { width: 100%; padding: 14px 16px; border: 2px solid var(--border); border-radius: var(--radius); font-size: 15px; color: #fff; background: var(--surface2); font-family: 'Poppins', sans-serif; transition: all 0.3s; }
+        .login-input::placeholder { color: #999; opacity: 1; }
+        .recuperacion-details { margin-top: 18px; border: 2px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+        .recuperacion-details summary { padding: 14px 16px; cursor: pointer; font-size: 13px; font-weight: 600; color: #fff; list-style: none; }
+        .recuperacion-details summary::-webkit-details-marker { display: none; }
+        .recuperacion-details[open] summary { border-bottom: 2px solid var(--border); }
+        .recuperacion-details .rec-body { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
         .login-input:focus { outline: none; border-color: var(--red); box-shadow: 0 0 0 4px rgba(204, 0, 0, 0.1); }
         .login-input.error { border-color: #ef4444; animation: shake 0.5s; }
         @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-10px)} 75%{transform:translateX(10px)} }
@@ -362,9 +368,14 @@
             <div class="login-field"><label class="login-label">Nuevo Usuario (opcional)</label><input type="text" id="newUsername" class="login-input" placeholder="Dejar vacío para no cambiar" autocomplete="off"></div>
             <div class="login-field"><label class="login-label">Nueva Contraseña (opcional)</label><input type="password" id="newPass" class="login-input" placeholder="Dejar vacío para no cambiar"><div class="login-error" id="newPassError"></div></div>
             <div class="login-field"><label class="login-label">Confirmar Nueva Contraseña</label><input type="password" id="confirmPass" class="login-input" placeholder="Repite la nueva contraseña"><div class="login-error" id="confirmPassError"></div></div>
-            <div class="login-field"><label class="login-label">Pregunta secreta (para recuperar acceso)</label><input type="text" id="preguntaSecreta" class="login-input" placeholder="Ej. ¿Nombre de tu primera mascota?"></div>
-            <div class="login-field"><label class="login-label">Respuesta secreta</label><input type="text" id="respuestaSecreta" class="login-input" placeholder="La respuesta"></div>
-            <div class="login-field"><label class="login-label">Correo para recibir código de recuperación (solo dueño)</label><input type="email" id="correoRecuperacion" class="login-input" placeholder="tu@correo.com"></div>
+            <details class="recuperacion-details">
+                <summary>🔐 Configurar recuperación de acceso (opcional) ▾</summary>
+                <div class="rec-body">
+                    <div class="login-field"><label class="login-label">Pregunta secreta</label><input type="text" id="preguntaSecreta" class="login-input" placeholder="Ej. ¿Nombre de tu primera mascota?"></div>
+                    <div class="login-field"><label class="login-label">Respuesta secreta</label><input type="text" id="respuestaSecreta" class="login-input" placeholder="La respuesta"></div>
+                    <div class="login-field"><label class="login-label">Correo (solo dueño, para código por email)</label><input type="email" id="correoRecuperacion" class="login-input" placeholder="tu@correo.com"></div>
+                </div>
+            </details>
             <div class="flex-gap"><button class="btn-primary" onclick="cambiarCredenciales()" style="flex:1">✅ Guardar</button><button class="btn-primary btn-cancel" onclick="cerrarCambioPassword()">❌ Cancelar</button></div>
         </div>
     </div>
