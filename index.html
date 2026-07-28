@@ -142,6 +142,10 @@
         .hdr-right { display: flex; align-items: center; gap: 6px; }
         .hdr-date { font-size: 8px; color: var(--text3); text-align: right; line-height: 1.2; }
         .logout-btn,.change-pass-btn { background: var(--surface2); color: var(--text2); border: 1px solid var(--border); padding: 4px 10px; border-radius: 6px; font-size: 9px; cursor: pointer; font-family: 'Poppins', sans-serif; transition: all 0.3s; }
+        .menu-utilidades { position: relative; }
+        .menu-utilidades-dropdown { display: none; position: absolute; top: calc(100% + 6px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px; flex-direction: column; gap: 4px; z-index: 500; min-width: 180px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
+        .menu-utilidades-dropdown.show { display: flex; }
+        .menu-utilidades-dropdown button { width: 100%; text-align: left; background: var(--surface2); color: var(--text2); border: 1px solid var(--border); padding: 8px 10px; border-radius: 6px; font-size: 10px; cursor: pointer; font-family: 'Poppins', sans-serif; }
         .logout-btn:hover { background: #2a2a2a; color: #ef4444; }
         .change-pass-btn:hover { background: #2a2a2a; color: var(--gold); }
         .alert-badge { background: #ef4444; color: #fff; padding: 3px 8px; border-radius: 50px; font-size: 8px; font-weight: 700; cursor: pointer; display: none; align-items: center; gap: 3px; border: none; font-family: 'Poppins', sans-serif; animation: pulse-badge 2s infinite; }
@@ -402,7 +406,7 @@
     </div>
 
     <div class="app-container" id="appContainer">
-        <div class="hdr"><div class="hdr-inner"><div class="logo-wrap"><div class="logo-icon">改</div><div><div class="logo-text">KAIZEN</div><div class="logo-sub">FITNESS</div></div></div><div class="hdr-right"><button class="change-pass-btn" onclick="recuperarDatosAntiguos()" title="Recuperar datos antiguos" style="background:#c0392b">📦</button><button class="change-pass-btn" onclick="forzarSincronizacionFirebase()" title="Traer datos de Firebase">🔄</button><button class="change-pass-btn" onclick="descargarRespaldo()" title="Descargar respaldo">💾</button><button class="change-pass-btn" onclick="abrirRestaurarModal()" title="Restaurar respaldo">📥</button><button class="change-pass-btn" onclick="abrirCambioPassword()" title="Cambiar contraseña">🔑</button><button class="logout-btn" onclick="logout()" title="Cerrar sesión">🚪 Salir</button><button class="alert-badge" id="alertBadge" onclick="showTab('notificaciones', document.querySelectorAll('.tab-btn')[3])">🔔 <span id="alertCount">0</span></button><div class="hdr-date" id="hdrDate"></div></div></div></div>
+        <div class="hdr"><div class="hdr-inner"><div class="logo-wrap"><div class="logo-icon">改</div><div><div class="logo-text">KAIZEN</div><div class="logo-sub">FITNESS</div></div></div><div class="hdr-right"><div class="menu-utilidades"><button class="change-pass-btn" onclick="toggleMenuUtilidades()" title="Más opciones">⚙️</button><div class="menu-utilidades-dropdown" id="menuUtilidadesDropdown"><button onclick="recuperarDatosAntiguos()">📦 Recuperar datos antiguos</button><button onclick="forzarSincronizacionFirebase()">🔄 Traer datos de Firebase</button><button onclick="descargarRespaldo()">💾 Descargar respaldo</button><button onclick="abrirRestaurarModal()">📥 Restaurar respaldo</button><button onclick="abrirCambioPassword()">🔑 Cambiar contraseña</button></div></div><button class="logout-btn" onclick="logout()" title="Cerrar sesión">🚪 Salir</button><button class="alert-badge" id="alertBadge" onclick="showTab('notificaciones', document.querySelectorAll('.tab-btn')[3])">🔔 <span id="alertCount">0</span></button><div class="hdr-date" id="hdrDate"></div></div></div></div>
 
         <div class="sbar">
             <div class="stat-row">
@@ -631,6 +635,18 @@
                 showToast('👋 Sesión cerrada');
             }
         }
+
+        function toggleMenuUtilidades() {
+            const dd = document.getElementById('menuUtilidadesDropdown');
+            dd.classList.toggle('show');
+        }
+        document.addEventListener('click', (e) => {
+            const menu = document.querySelector('.menu-utilidades');
+            const dd = document.getElementById('menuUtilidadesDropdown');
+            if (menu && dd && dd.classList.contains('show') && !menu.contains(e.target)) {
+                dd.classList.remove('show');
+            }
+        });
 
         function abrirCambioPassword() {
             document.getElementById('changePasswordModal').classList.add('show');
