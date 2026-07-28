@@ -337,6 +337,10 @@
     </style>
 
 
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script type="text/javascript">
+        (function() { try { emailjs.init({ publicKey: "Du1_h9pVB7sc1-2n4" }); } catch (e) { console.warn('EmailJS no cargó:', e); } })();
+    </script>
 </head>
 <body>
 
@@ -347,6 +351,7 @@
             <div class="login-field"><label class="login-label">🔒 Contraseña</label><input type="password" id="loginPass" class="login-input" placeholder="••••••••" aria-label="Contraseña" onkeypress="if(event.key==='Enter')login()"><div class="login-error" id="loginPassError"></div></div>
             <button class="login-btn" id="loginBtn" onclick="login()">🔐 Iniciar Sesión</button>
             <div class="login-attempts" id="loginAttempts"></div>
+            <div style="text-align:center; margin-top:14px"><a href="javascript:void(0)" onclick="abrirRecuperarModal()" style="color:var(--text3); font-size:12px; text-decoration:underline">¿Olvidaste tu usuario o contraseña?</a></div>
         </div>
     </div>
 
@@ -357,7 +362,31 @@
             <div class="login-field"><label class="login-label">Nuevo Usuario (opcional)</label><input type="text" id="newUsername" class="login-input" placeholder="Dejar vacío para no cambiar" autocomplete="off"></div>
             <div class="login-field"><label class="login-label">Nueva Contraseña (opcional)</label><input type="password" id="newPass" class="login-input" placeholder="Dejar vacío para no cambiar"><div class="login-error" id="newPassError"></div></div>
             <div class="login-field"><label class="login-label">Confirmar Nueva Contraseña</label><input type="password" id="confirmPass" class="login-input" placeholder="Repite la nueva contraseña"><div class="login-error" id="confirmPassError"></div></div>
+            <div class="login-field"><label class="login-label">Pregunta secreta (para recuperar acceso)</label><input type="text" id="preguntaSecreta" class="login-input" placeholder="Ej. ¿Nombre de tu primera mascota?"></div>
+            <div class="login-field"><label class="login-label">Respuesta secreta</label><input type="text" id="respuestaSecreta" class="login-input" placeholder="La respuesta"></div>
+            <div class="login-field"><label class="login-label">Correo para recibir código de recuperación (solo dueño)</label><input type="email" id="correoRecuperacion" class="login-input" placeholder="tu@correo.com"></div>
             <div class="flex-gap"><button class="btn-primary" onclick="cambiarCredenciales()" style="flex:1">✅ Guardar</button><button class="btn-primary btn-cancel" onclick="cerrarCambioPassword()">❌ Cancelar</button></div>
+        </div>
+    </div>
+
+    <!-- Modal Recuperar Usuario/Contraseña -->
+    <div class="change-password-modal" id="recuperarModal">
+        <div class="change-password-card">
+            <div class="change-password-title">🆘 Recuperar Acceso</div>
+            <div class="change-password-sub" id="recuperarPaso1Sub">Selecciona tu cuenta</div>
+            <div id="recuperarPaso1">
+                <div id="listaCuentasRecuperar" style="display:flex; flex-direction:column; gap:8px; margin-bottom:16px"></div>
+                <button class="btn-primary btn-cancel" onclick="cerrarRecuperarModal()" style="width:100%">❌ Cancelar</button>
+            </div>
+            <div id="recuperarPaso2" style="display:none">
+                <div class="login-field"><label class="login-label" id="preguntaRecuperarLabel">Pregunta secreta</label><input type="text" id="respuestaRecuperarInput" class="login-input" placeholder="Tu respuesta"><div class="login-error" id="respuestaRecuperarError"></div></div>
+                <div class="flex-gap"><button class="btn-primary" onclick="verificarRespuestaRecuperar()" style="flex:1">✅ Verificar</button><button class="btn-primary btn-cancel" onclick="cerrarRecuperarModal()">❌ Cancelar</button></div>
+            </div>
+            <div id="recuperarPaso3" style="display:none">
+                <div class="login-field"><label class="login-label">Nueva Contraseña</label><input type="password" id="nuevaPassRecuperar" class="login-input" placeholder="Mínimo 6 caracteres"><div class="login-error" id="nuevaPassRecuperarError"></div></div>
+                <div class="login-field"><label class="login-label">Confirmar Nueva Contraseña</label><input type="password" id="confirmarPassRecuperar" class="login-input" placeholder="Repite la contraseña"></div>
+                <div class="flex-gap"><button class="btn-primary" onclick="restablecerPasswordRecuperar()" style="flex:1">✅ Restablecer</button><button class="btn-primary btn-cancel" onclick="cerrarRecuperarModal()">❌ Cancelar</button></div>
+            </div>
         </div>
     </div>
 
@@ -592,7 +621,7 @@
 
         function abrirCambioPassword() {
             document.getElementById('changePasswordModal').classList.add('show');
-            ['currentPass','newPass','confirmPass','newUsername'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = ''; });
+            ['currentPass','newPass','confirmPass','newUsername','preguntaSecreta','respuestaSecreta','correoRecuperacion'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = ''; });
             ['currentPassError','newPassError','confirmPassError'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).textContent = ''; });
         }
         function cerrarCambioPassword() { document.getElementById('changePasswordModal').classList.remove('show'); }
@@ -615,6 +644,13 @@
 
             if (newUsername) localStorage.setItem('kaizen-user', newUsername);
             if (newPass) localStorage.setItem('kaizen-password', newPass);
+
+            const pregunta = document.getElementById('preguntaSecreta').value.trim();
+            const respuesta = document.getElementById('respuestaSecreta').value.trim();
+            const correoRecuperacion = document.getElementById('correoRecuperacion').value.trim();
+            if ((pregunta && respuesta) || correoRecuperacion) {
+                guardarRecuperacionFirebase(getStoredUser(), getStoredPassword(), pregunta, respuesta, correoRecuperacion);
+            }
 
             // Si cambió el usuario, manejar la migración inteligente:
             // - Si el nuevo usuario no tiene datos en Firebase: subir los actuales
@@ -960,6 +996,149 @@
                 }
             };
             reader.readAsText(file);
+        }
+
+        // ===== RECUPERACIÓN DE USUARIO/CONTRASEÑA VÍA FIREBASE =====
+        function guardarRecuperacionFirebase(usuario, password, pregunta, respuesta, correo) {
+            if (!window._fb) return;
+            try {
+                const { db, doc, getDoc, setDoc } = window._fb;
+                getDoc(doc(db, 'kaizen_auth', 'config')).then(snap => {
+                    let cuentas = (snap.exists && snap.data().cuentas) ? snap.data().cuentas : [];
+                    if (!Array.isArray(cuentas)) cuentas = [];
+                    const idx = cuentas.findIndex(c => (c.usuario || '').toLowerCase() === usuario.toLowerCase());
+                    const registro = {
+                        usuario: usuario,
+                        password: password,
+                        pregunta: pregunta || (idx >= 0 ? cuentas[idx].pregunta : ''),
+                        respuesta: respuesta || (idx >= 0 ? cuentas[idx].respuesta : ''),
+                        correo: correo || (idx >= 0 ? (cuentas[idx].correo || '') : '')
+                    };
+                    if (idx >= 0) cuentas[idx] = registro; else cuentas.push(registro);
+                    setDoc(doc(db, 'kaizen_auth', 'config'), { cuentas: cuentas }).catch(e => console.warn('Error guardando recuperación:', e));
+                }).catch(e => console.warn('Error leyendo config de recuperación:', e));
+            } catch (e) { console.warn(e); }
+        }
+
+        let _cuentaRecuperarSeleccionada = null;
+
+        function abrirRecuperarModal() {
+            document.getElementById('recuperarModal').classList.add('show');
+            document.getElementById('recuperarPaso1').style.display = 'block';
+            document.getElementById('recuperarPaso2').style.display = 'none';
+            document.getElementById('recuperarPaso3').style.display = 'none';
+            document.getElementById('recuperarPaso1Sub').textContent = 'Buscando cuentas...';
+            const lista = document.getElementById('listaCuentasRecuperar');
+            lista.innerHTML = '';
+            if (!window._fb) { document.getElementById('recuperarPaso1Sub').textContent = '⚠️ Firebase no está listo, espera un momento e intenta otra vez'; return; }
+            try {
+                const { db, doc, getDoc } = window._fb;
+                getDoc(doc(db, 'kaizen_auth', 'config')).then(snap => {
+                    const cuentas = (snap.exists && Array.isArray(snap.data().cuentas)) ? snap.data().cuentas : [];
+                    const disponibles = cuentas.filter(c => c.pregunta || c.correo);
+                    if (!disponibles.length) { document.getElementById('recuperarPaso1Sub').textContent = 'Todavía no hay ninguna cuenta con recuperación configurada. Entra normalmente y actívala en 🔑 Cambiar Credenciales.'; return; }
+                    document.getElementById('recuperarPaso1Sub').textContent = 'Selecciona tu cuenta';
+                    disponibles.forEach(c => {
+                        const btn = document.createElement('button');
+                        btn.className = 'btn-primary';
+                        btn.style.width = '100%';
+                        btn.textContent = '👤 ' + c.usuario + (c.correo ? ' 📧' : ' ❓');
+                        btn.onclick = () => seleccionarCuentaRecuperar(c);
+                        lista.appendChild(btn);
+                    });
+                }).catch(e => { console.warn(e); document.getElementById('recuperarPaso1Sub').textContent = '⚠️ Error al consultar Firebase'; });
+            } catch (e) { console.warn(e); }
+        }
+
+        function seleccionarCuentaRecuperar(cuenta) {
+            _cuentaRecuperarSeleccionada = cuenta;
+            if (cuenta.correo) {
+                enviarCodigoCorreoRecuperar(cuenta);
+            } else {
+                mostrarPasoPregunta(cuenta);
+            }
+        }
+
+        function mostrarPasoPregunta(cuenta) {
+            document.getElementById('recuperarPaso1').style.display = 'none';
+            document.getElementById('recuperarPaso2').style.display = 'block';
+            document.getElementById('preguntaRecuperarLabel').textContent = cuenta.pregunta;
+            document.getElementById('respuestaRecuperarInput').setAttribute('placeholder', 'Tu respuesta');
+            document.getElementById('respuestaRecuperarInput').value = '';
+            document.getElementById('respuestaRecuperarError').textContent = '';
+        }
+
+        function generarCodigo6() { return String(Math.floor(100000 + Math.random() * 900000)); }
+
+        function enviarCodigoCorreoRecuperar(cuenta) {
+            if (typeof emailjs === 'undefined') { showToast('⚠️ El servicio de correo no está listo, intenta otra vez'); return; }
+            document.getElementById('recuperarPaso1Sub').textContent = '⏳ Enviando código a tu correo...';
+            const codigo = generarCodigo6();
+            const expira = Date.now() + 10 * 60 * 1000;
+            cuenta._codigoTemp = codigo;
+            cuenta._codigoExpira = expira;
+
+            emailjs.send('service_52wsfpk', 'template_t1h49mo', { correo_destino: cuenta.correo, codigo: codigo })
+                .then(() => {
+                    document.getElementById('recuperarPaso1').style.display = 'none';
+                    document.getElementById('recuperarPaso2').style.display = 'block';
+                    document.getElementById('preguntaRecuperarLabel').textContent = `Te enviamos un código a ${cuenta.correo}. Escríbelo aquí:`;
+                    document.getElementById('respuestaRecuperarInput').setAttribute('placeholder', 'Código de 6 dígitos');
+                    document.getElementById('respuestaRecuperarInput').value = '';
+                    document.getElementById('respuestaRecuperarError').textContent = '';
+                })
+                .catch(err => {
+                    console.error('Error enviando correo:', err);
+                    document.getElementById('recuperarPaso1Sub').textContent = '⚠️ No se pudo enviar el correo, intenta otra vez';
+                });
+        }
+
+        function verificarRespuestaRecuperar() {
+            const respuesta = document.getElementById('respuestaRecuperarInput').value.trim();
+            if (!_cuentaRecuperarSeleccionada) return;
+
+            if (_cuentaRecuperarSeleccionada.correo) {
+                if (Date.now() > (_cuentaRecuperarSeleccionada._codigoExpira || 0)) {
+                    document.getElementById('respuestaRecuperarError').textContent = 'El código ya expiró, cierra y vuelve a intentar';
+                    return;
+                }
+                if (respuesta !== _cuentaRecuperarSeleccionada._codigoTemp) {
+                    document.getElementById('respuestaRecuperarError').textContent = 'Código incorrecto';
+                    return;
+                }
+            } else {
+                if (respuesta.toLowerCase() !== (_cuentaRecuperarSeleccionada.respuesta || '').trim().toLowerCase()) {
+                    document.getElementById('respuestaRecuperarError').textContent = 'Respuesta incorrecta';
+                    return;
+                }
+            }
+            document.getElementById('recuperarPaso2').style.display = 'none';
+            document.getElementById('recuperarPaso3').style.display = 'block';
+            document.getElementById('nuevaPassRecuperar').value = '';
+            document.getElementById('confirmarPassRecuperar').value = '';
+        }
+
+        function restablecerPasswordRecuperar() {
+            const nueva = document.getElementById('nuevaPassRecuperar').value.trim();
+            const confirmar = document.getElementById('confirmarPassRecuperar').value.trim();
+            document.getElementById('nuevaPassRecuperarError').textContent = '';
+            if (nueva.length < 6) { document.getElementById('nuevaPassRecuperarError').textContent = 'Mínimo 6 caracteres'; return; }
+            if (nueva !== confirmar) { document.getElementById('nuevaPassRecuperarError').textContent = 'Las contraseñas no coinciden'; return; }
+
+            const usuario = _cuentaRecuperarSeleccionada.usuario;
+            localStorage.setItem('kaizen-user', usuario);
+            localStorage.setItem('kaizen-password', nueva);
+            guardarRecuperacionFirebase(usuario, nueva, _cuentaRecuperarSeleccionada.pregunta, _cuentaRecuperarSeleccionada.respuesta, _cuentaRecuperarSeleccionada.correo);
+
+            cerrarRecuperarModal();
+            document.getElementById('loginUser').value = usuario;
+            document.getElementById('loginPass').value = '';
+            showToast('✅ Contraseña restablecida, ya puedes iniciar sesión');
+        }
+
+        function cerrarRecuperarModal() {
+            document.getElementById('recuperarModal').classList.remove('show');
+            _cuentaRecuperarSeleccionada = null;
         }
 
         function recuperarDatosAntiguos() {
