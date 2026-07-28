@@ -438,6 +438,7 @@
             <div class="form-card" style="margin-bottom:14px">
                 <div class="form-title">➕ Nuevo Miembro</div><div class="form-sub">Registra un nuevo integrante del gym</div>
                 <div class="field-group"><label class="field-label">👤 Nombre completo</label><input type="text" id="m-nombre" placeholder="Ej. Carlos Ramírez" autocomplete="off" aria-label="Nombre completo del miembro" oninput="clearErr('m-nombre')" maxlength="60"><span class="err-msg" id="err-m-nombre"></span></div>
+                <div class="field-group" id="grupoNombrePareja" style="display:none"><label class="field-label">👤 Nombre de la pareja</label><input type="text" id="m-nombre2" placeholder="Ej. Ana Ramírez" autocomplete="off" aria-label="Nombre del segundo integrante" oninput="clearErr('m-nombre2')" maxlength="60"><span class="err-msg" id="err-m-nombre2"></span></div>
                 <div class="field-group"><label class="field-label" id="telefonoLabel">📱 Teléfono (WhatsApp)</label><input type="tel" id="m-telefono" placeholder="Ej. 5215512345678" autocomplete="off" aria-label="Teléfono con código de país" oninput="clearErr('m-telefono')" maxlength="15"><span class="err-msg" id="err-m-telefono"></span><span style="font-size:7px;color:var(--text3);margin-top:1px;display:block" id="telefonoHint">Incluye código de país: 52 + número</span></div>
                 <div class="field-group"><label class="field-label">💪 Membresía</label><div class="plan-cards" id="planCards">
                     <div class="plan-card" data-plan="Día" data-precio="50" data-dias="1" data-tipo="dias" onclick="seleccionarPlan(this)"><div class="plan-name">🏃 Día</div><div class="plan-duration">1 día</div><div class="plan-price">$50<span> MXN</span></div></div>
@@ -614,6 +615,7 @@
                 // Cancelar suscripción a Firebase
                 if (_fbUnsubscribe) { try { _fbUnsubscribe(); } catch(e) {} _fbUnsubscribe = null; }
                 _corteVerificadoConFirebase = false;
+                _primerSnapshotRecibido = false;
                 // Limpiar datos de localStorage para evitar fugas entre usuarios
                 localStorage.removeItem('kaizen-miembros');
                 localStorage.removeItem('kaizen-gastos');
@@ -728,7 +730,7 @@
         };
         let planSeleccionado = 'Mes', precioSeleccionado = 500, diasSeleccionados = 1, tipoSeleccionado = 'meses';
         let miembros = [], gastos = [], historialNotificaciones = [], gananciasChart = null, filtroActual = 'todos', busquedaActual = '';
-        let _fbSyncTimer = null, _fbBloqueado = false, _fbUnsubscribe = null, _corteVerificadoConFirebase = false;
+        let _fbSyncTimer = null, _fbBloqueado = false, _fbUnsubscribe = null, _corteVerificadoConFirebase = false, _primerSnapshotRecibido = false;
 
         function cargarDatos() { 
             try { 
@@ -851,6 +853,10 @@
                 if (label) label.innerHTML = '📱 Teléfono (WhatsApp)';
                 if (hint) hint.textContent = 'Incluye código de país: 52 + número';
             }
+            // Mostrar campo de segundo nombre solo para plan Pareja
+            const grupoPareja = document.getElementById('grupoNombrePareja');
+            if (grupoPareja) grupoPareja.style.display = (planSeleccionado === 'Pareja') ? 'block' : 'none';
+            if (planSeleccionado !== 'Pareja') { const n2 = document.getElementById('m-nombre2'); if (n2) n2.value = ''; }
             actualizarVencimiento(); 
         }
 
@@ -888,21 +894,25 @@
         }
 
         function registrarMiembro() { 
-            ['m-nombre', 'm-telefono', 'm-inicio'].forEach(clearErr); 
-            const nombre = document.getElementById('m-nombre').value.trim(); 
+            ['m-nombre', 'm-nombre2', 'm-telefono', 'm-inicio'].forEach(clearErr); 
+            let nombre = document.getElementById('m-nombre').value.trim(); 
+            const nombre2 = document.getElementById('m-nombre2').value.trim();
             const telefono = document.getElementById('m-telefono').value.trim(); 
             const inicio = document.getElementById('m-inicio').value; 
             const vencimiento = document.getElementById('m-vencimiento').value; 
             let ok = true; 
             if (!nombre) { setErr('m-nombre', 'Campo requerido'); ok = false; } 
+            if (planSeleccionado === 'Pareja' && !nombre2) { setErr('m-nombre2', 'Falta el nombre de la pareja'); ok = false; }
             if (!telefono && planSeleccionado !== 'Día') { setErr('m-telefono', 'Teléfono requerido'); ok = false; } 
             if (!inicio) { setErr('m-inicio', 'Fecha requerida'); ok = false; } 
             if (!vencimiento) { setErr('m-inicio', 'Fecha inválida o no calculada'); ok = false; } 
             if (!ok) return; 
+            if (planSeleccionado === 'Pareja' && nombre2) { nombre = nombre + ' & ' + nombre2; }
             const ahoraMiembro = Date.now();
             miembros.push({ id: ahoraMiembro, nombre, telefono, plan: planSeleccionado, precio: precioSeleccionado, inicio, vencimiento, activo: true, diasPausados: 0, fechaPausa: null, pagos: [{ id: ahoraMiembro + 1, fecha: inicio, monto: precioSeleccionado, plan: planSeleccionado }] });
             guardarMiembros(); 
             document.getElementById('m-nombre').value = ''; 
+            document.getElementById('m-nombre2').value = '';
             document.getElementById('m-telefono').value = ''; 
             document.getElementById('m-inicio').value = hoy();
             document.getElementById('m-dias-usados').value = '0';
@@ -918,6 +928,14 @@
 
         function syncFirebase() {
             if (!window._fb || _fbBloqueado) return;
+            // Blindaje: si todavía no hemos recibido la primera confirmación real de Firebase
+            // y todo se ve vacío localmente, NO subimos nada. Esto evita que un
+            // dispositivo recién abierto (o después de cerrar sesión) sobrescriba
+            // datos reales en Firebase con arreglos vacíos antes de que llegue la sincronización.
+            if (!_primerSnapshotRecibido && miembros.length === 0 && gastos.length === 0 && historialNotificaciones.length === 0) {
+                console.warn('Sync a Firebase pausado: esperando confirmación inicial para evitar sobreescribir datos.');
+                return;
+            }
             clearTimeout(_fbSyncTimer);
             _fbSyncTimer = setTimeout(() => {
                 try {
@@ -1217,7 +1235,7 @@
             try {
                 const { db, doc, onSnapshot } = window._fb;
                 _fbUnsubscribe = onSnapshot(doc(db, 'kaizen', getUserDocId()), (snap) => {
-                    if (!snap.exists) return;
+                    if (!snap.exists) { _primerSnapshotRecibido = true; return; }
                     const data = snap.data();
                     _fbBloqueado = true;
                     try {
@@ -1226,6 +1244,7 @@
                         if (Array.isArray(data.historialNotificaciones)) { historialNotificaciones = data.historialNotificaciones; localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones)); }
                         if (data.capitalInicial !== undefined) { localStorage.setItem('kaizen-capital-inicial', data.capitalInicial); }
                         if (Array.isArray(data.cortesCapital)) { localStorage.setItem('kaizen-cortes-capital', JSON.stringify(data.cortesCapital)); }
+                        _primerSnapshotRecibido = true;
                         if (!_corteVerificadoConFirebase) { _corteVerificadoConFirebase = true; verificarCortesAutomaticos(); }
                         actualizarTodo();
                     } finally {
@@ -1928,8 +1947,14 @@
             actualizarFecha(); cargarDatos(); 
             const mInicio = document.getElementById('m-inicio'); const gFecha = document.getElementById('g-fecha'); 
             if (mInicio) mInicio.value = hoy(); if (gFecha) gFecha.value = hoy(); 
-            actualizarVencimiento(); verificarCortesAutomaticos(); actualizarTodo();
-            setTimeout(suscribirFirebase, 1000);
+            actualizarVencimiento(); actualizarTodo();
+            // Ya NO llamamos verificarCortesAutomaticos() aquí de una vez: eso corría con
+            // datos locales que podían estar vacíos (recién logueado, caché borrada, etc.)
+            // y disparaba una subida a Firebase que sobrescribía los datos reales.
+            // Ahora se dispara solo cuando llega la primera confirmación real desde Firebase
+            // (ver suscribirFirebase). Este respaldo es solo por si nunca hay internet.
+            setTimeout(suscribirFirebase, 300);
+            setTimeout(() => { if (!_corteVerificadoConFirebase) { _corteVerificadoConFirebase = true; verificarCortesAutomaticos(); actualizarTodo(); } }, 8000);
         }
     </script>
     <!-- Modal Restaurar Respaldo -->
