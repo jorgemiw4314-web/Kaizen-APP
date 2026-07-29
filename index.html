@@ -369,6 +369,7 @@
         <div class="change-password-card">
             <div class="change-password-title">⚙️ Cambiar Credenciales</div><div class="change-password-sub">Administrador de Kaizen Fitness</div>
             <div class="login-field"><label class="login-label">Contraseña Actual</label><input type="password" id="currentPass" class="login-input" placeholder="••••••••"><div class="login-error" id="currentPassError"></div></div>
+            <div class="login-field"><label class="login-label">Tu nombre (para identificar tu contraseña)</label><input type="text" id="tuPersona" class="login-input" placeholder="Ej. Fernando" autocomplete="off"></div>
             <div class="login-field"><label class="login-label">Nuevo Usuario (opcional)</label><input type="text" id="newUsername" class="login-input" placeholder="Dejar vacío para no cambiar" autocomplete="off"></div>
             <div class="login-field"><label class="login-label">Nueva Contraseña (opcional)</label><input type="password" id="newPass" class="login-input" placeholder="Dejar vacío para no cambiar"><div class="login-error" id="newPassError"></div></div>
             <div class="login-field"><label class="login-label">Confirmar Nueva Contraseña</label><input type="password" id="confirmPass" class="login-input" placeholder="Repite la nueva contraseña"><div class="login-error" id="confirmPassError"></div></div>
@@ -589,19 +590,66 @@
             if (!user) { userError.textContent = 'Ingresa tu usuario'; userInput.classList.add('error'); return; }
             if (!pass) { passError.textContent = 'Ingresa la contraseña'; passInput.classList.add('error'); return; }
 
-            if (user === getStoredUser() && pass === getStoredPassword()) {
+            loginBtn.disabled = true;
+
+            // 1) Intentamos validar contra Firebase (fuente compartida entre todos los
+            //    dispositivos). 2) Si no hay internet o no hay cuentas configuradas ahí,
+            //    caemos al respaldo local de este dispositivo (comportamiento anterior).
+            const intentarLoginLocal = () => {
+                if (user === getStoredUser() && pass === getStoredPassword()) {
+                    completarLogin(user);
+                } else {
+                    fallarLogin(user);
+                }
+            };
+
+            if (window._fb) {
+                try {
+                    const { db, doc, getDoc } = window._fb;
+                    getDoc(doc(db, 'kaizen_auth', 'config')).then(snap => {
+                        const cuentas = (snap.exists && Array.isArray(snap.data().cuentas)) ? snap.data().cuentas : [];
+                        const cuenta = cuentas.find(c => (c.usuario || '').toLowerCase() === user.toLowerCase());
+                        const personas = (cuenta && Array.isArray(cuenta.personas)) ? cuenta.personas : [];
+                        const match = personas.find(p => p.password === pass);
+                        if (cuenta && match) {
+                            // Guardamos localmente para que este dispositivo también
+                            // funcione offline con las mismas credenciales.
+                            localStorage.setItem('kaizen-user', cuenta.usuario);
+                            localStorage.setItem('kaizen-password', match.password);
+                            completarLogin(match.persona || cuenta.usuario);
+                        } else if (cuenta && personas.length) {
+                            // La cuenta existe y ya tiene personas registradas, pero
+                            // ninguna coincide con esta contraseña.
+                            fallarLogin(user);
+                        } else {
+                            // Esa cuenta no existe en Firebase todavía (nunca se ha
+                            // guardado ahí): probamos con el respaldo local/default.
+                            intentarLoginLocal();
+                        }
+                    }).catch(() => intentarLoginLocal());
+                } catch (e) { intentarLoginLocal(); }
+            } else {
+                intentarLoginLocal();
+            }
+
+            function completarLogin(usuarioFinal) {
                 loginAttempts = 0; blockUntil = null;
                 sessionStorage.setItem('kaizen-auth', 'true');
                 document.getElementById('loginContainer').classList.add('hidden');
                 document.getElementById('appContainer').classList.add('show');
                 userInput.value = ''; passInput.value = '';
                 attemptsDiv.textContent = ''; attemptsDiv.className = 'login-attempts';
-                init(); showToast(`✅ Bienvenido, ${getStoredUser()}`);
-            } else {
+                loginBtn.disabled = false;
+                init(); showToast(`✅ Bienvenido, ${usuarioFinal}`);
+            }
+
+            function fallarLogin(userIntentado) {
+                loginBtn.disabled = false;
                 loginAttempts++;
                 const remaining = MAX_ATTEMPTS - loginAttempts;
-                if (user !== getStoredUser()) { userError.textContent = 'Usuario incorrecto'; userInput.classList.add('error'); }
-                if (pass !== getStoredPassword()) { passError.textContent = 'Contraseña incorrecta'; passInput.classList.add('error'); }
+                userError.textContent = 'Usuario o contraseña incorrectos';
+                passError.textContent = 'Usuario o contraseña incorrectos';
+                userInput.classList.add('error'); passInput.classList.add('error');
                 if (loginAttempts >= MAX_ATTEMPTS) {
                     blockUntil = Date.now() + BLOCK_TIME;
                     attemptsDiv.textContent = '⛔ Demasiados intentos. Bloqueado por 5 minutos';
@@ -650,7 +698,7 @@
 
         function abrirCambioPassword() {
             document.getElementById('changePasswordModal').classList.add('show');
-            ['currentPass','newPass','confirmPass','newUsername','preguntaSecreta','respuestaSecreta','correoRecuperacion'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = ''; });
+            ['currentPass','newPass','confirmPass','newUsername','tuPersona','preguntaSecreta','respuestaSecreta','correoRecuperacion'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).value = ''; });
             ['currentPassError','newPassError','confirmPassError'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).textContent = ''; });
         }
         function cerrarCambioPassword() { document.getElementById('changePasswordModal').classList.remove('show'); }
@@ -667,6 +715,8 @@
             else if (currentPass !== getStoredPassword()) { document.getElementById('currentPassError').textContent = 'Contraseña actual incorrecta'; hasError = true; }
             if (newPass && newPass.length < 6) { document.getElementById('newPassError').textContent = 'Mínimo 6 caracteres'; hasError = true; }
             if (newPass && newPass !== confirmPass) { document.getElementById('confirmPassError').textContent = 'Las contraseñas no coinciden'; hasError = true; }
+            const tuPersona = document.getElementById('tuPersona').value.trim();
+            if (!tuPersona) { document.getElementById('currentPassError').textContent = document.getElementById('currentPassError').textContent || 'Escribe tu nombre para identificar tu contraseña'; hasError = true; }
             if (hasError) return;
 
             const cambioUsuario = newUsername && newUsername !== getStoredUser();
@@ -677,9 +727,10 @@
             const pregunta = document.getElementById('preguntaSecreta').value.trim();
             const respuesta = document.getElementById('respuestaSecreta').value.trim();
             const correoRecuperacion = document.getElementById('correoRecuperacion').value.trim();
-            if ((pregunta && respuesta) || correoRecuperacion) {
-                guardarRecuperacionFirebase(getStoredUser(), getStoredPassword(), pregunta, respuesta, correoRecuperacion);
-            }
+            // Guardamos en Firebase la contraseña de ESTA persona, dentro del mismo
+            // usuario compartido (ej. "admin"), sin pisar las contraseñas de las
+            // demás personas que usan ese mismo usuario.
+            guardarRecuperacionFirebase(getStoredUser(), tuPersona, getStoredPassword(), pregunta, respuesta, correoRecuperacion);
 
             // Si cambió el usuario, manejar la migración inteligente:
             // - Si el nuevo usuario no tiene datos en Firebase: subir los actuales
@@ -1044,22 +1095,30 @@
         }
 
         // ===== RECUPERACIÓN DE USUARIO/CONTRASEÑA VÍA FIREBASE =====
-        function guardarRecuperacionFirebase(usuario, password, pregunta, respuesta, correo) {
-            if (!window._fb) return;
+        // Modelo: cada "cuenta" (usuario, ej. "admin") puede tener varias "personas",
+        // cada una con su PROPIA contraseña, pregunta secreta y correo. Así, aunque
+        // todos entren con el mismo usuario, cada quien conserva su propia contraseña
+        // sin pisar la de los demás.
+        function guardarRecuperacionFirebase(usuario, persona, password, pregunta, respuesta, correo) {
+            if (!window._fb || !persona) return;
             try {
                 const { db, doc, getDoc, setDoc } = window._fb;
                 getDoc(doc(db, 'kaizen_auth', 'config')).then(snap => {
                     let cuentas = (snap.exists && snap.data().cuentas) ? snap.data().cuentas : [];
                     if (!Array.isArray(cuentas)) cuentas = [];
-                    const idx = cuentas.findIndex(c => (c.usuario || '').toLowerCase() === usuario.toLowerCase());
+                    let cuentaIdx = cuentas.findIndex(c => (c.usuario || '').toLowerCase() === usuario.toLowerCase());
+                    if (cuentaIdx < 0) { cuentas.push({ usuario: usuario, personas: [] }); cuentaIdx = cuentas.length - 1; }
+                    if (!Array.isArray(cuentas[cuentaIdx].personas)) cuentas[cuentaIdx].personas = [];
+                    const personas = cuentas[cuentaIdx].personas;
+                    const pIdx = personas.findIndex(p => (p.persona || '').toLowerCase() === persona.toLowerCase());
                     const registro = {
-                        usuario: usuario,
+                        persona: persona,
                         password: password,
-                        pregunta: pregunta || (idx >= 0 ? cuentas[idx].pregunta : ''),
-                        respuesta: respuesta || (idx >= 0 ? cuentas[idx].respuesta : ''),
-                        correo: correo || (idx >= 0 ? (cuentas[idx].correo || '') : '')
+                        pregunta: pregunta || (pIdx >= 0 ? personas[pIdx].pregunta : ''),
+                        respuesta: respuesta || (pIdx >= 0 ? personas[pIdx].respuesta : ''),
+                        correo: correo || (pIdx >= 0 ? (personas[pIdx].correo || '') : '')
                     };
-                    if (idx >= 0) cuentas[idx] = registro; else cuentas.push(registro);
+                    if (pIdx >= 0) personas[pIdx] = registro; else personas.push(registro);
                     setDoc(doc(db, 'kaizen_auth', 'config'), { cuentas: cuentas }).catch(e => console.warn('Error guardando recuperación:', e));
                 }).catch(e => console.warn('Error leyendo config de recuperación:', e));
             } catch (e) { console.warn(e); }
@@ -1080,14 +1139,19 @@
                 const { db, doc, getDoc } = window._fb;
                 getDoc(doc(db, 'kaizen_auth', 'config')).then(snap => {
                     const cuentas = (snap.exists && Array.isArray(snap.data().cuentas)) ? snap.data().cuentas : [];
-                    const disponibles = cuentas.filter(c => c.pregunta || c.correo);
-                    if (!disponibles.length) { document.getElementById('recuperarPaso1Sub').textContent = 'Todavía no hay ninguna cuenta con recuperación configurada. Entra normalmente y actívala en 🔑 Cambiar Credenciales.'; return; }
-                    document.getElementById('recuperarPaso1Sub').textContent = 'Selecciona tu cuenta';
+                    const disponibles = [];
+                    cuentas.forEach(c => {
+                        (c.personas || []).forEach(p => {
+                            if (p.pregunta || p.correo) disponibles.push({ usuario: c.usuario, persona: p.persona, password: p.password, pregunta: p.pregunta, respuesta: p.respuesta, correo: p.correo });
+                        });
+                    });
+                    if (!disponibles.length) { document.getElementById('recuperarPaso1Sub').textContent = 'Todavía no hay ninguna cuenta con recuperación configurada. Entra normalmente y actívala en ⚙️ → 🔑 Cambiar Credenciales.'; return; }
+                    document.getElementById('recuperarPaso1Sub').textContent = 'Selecciona tu nombre';
                     disponibles.forEach(c => {
                         const btn = document.createElement('button');
                         btn.className = 'btn-primary';
                         btn.style.width = '100%';
-                        btn.textContent = '👤 ' + c.usuario + (c.correo ? ' 📧' : ' ❓');
+                        btn.textContent = '👤 ' + c.persona + (c.correo ? ' 📧' : ' ❓');
                         btn.onclick = () => seleccionarCuentaRecuperar(c);
                         lista.appendChild(btn);
                     });
@@ -1171,9 +1235,10 @@
             if (nueva !== confirmar) { document.getElementById('nuevaPassRecuperarError').textContent = 'Las contraseñas no coinciden'; return; }
 
             const usuario = _cuentaRecuperarSeleccionada.usuario;
+            const persona = _cuentaRecuperarSeleccionada.persona;
             localStorage.setItem('kaizen-user', usuario);
             localStorage.setItem('kaizen-password', nueva);
-            guardarRecuperacionFirebase(usuario, nueva, _cuentaRecuperarSeleccionada.pregunta, _cuentaRecuperarSeleccionada.respuesta, _cuentaRecuperarSeleccionada.correo);
+            guardarRecuperacionFirebase(usuario, persona, nueva, _cuentaRecuperarSeleccionada.pregunta, _cuentaRecuperarSeleccionada.respuesta, _cuentaRecuperarSeleccionada.correo);
 
             cerrarRecuperarModal();
             document.getElementById('loginUser').value = usuario;
