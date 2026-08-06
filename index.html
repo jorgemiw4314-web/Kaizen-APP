@@ -26,6 +26,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
     <style>
+        * { touch-action: manipulation; }
         :root {
             --bg: #0a0a0a;
             --surface: #141414;
@@ -462,6 +463,7 @@
                 <button class="filtro-btn" data-filtro="pausados" onclick="cambiarFiltro('pausados', this)">⏸️ Pausados</button>
                 <button class="filtro-btn" data-filtro="vencidos" onclick="cambiarFiltro('vencidos', this)">❌ Vencidos</button>
             </div>
+            <div style="margin-top:8px"><button class="filtro-btn" id="toggleDiaBtn" onclick="toggleMostrarDia()">👁️ Mostrar miembros de Día (0)</button></div>
 
             <div class="search-wrap">
                 <span class="search-icon">🔍</span>
@@ -556,6 +558,53 @@
     </script>
 
     <script>
+        // ===== VERSIÓN Y NOVEDADES =====
+        // Cada vez que se actualiza la app, se sube el número de APP_VERSION y se agrega
+        // una entrada nueva a CHANGELOG. La primera vez que alguien abre la app después
+        // de esa actualización, le sale un aviso mostrando qué cambió.
+        const APP_VERSION = '2026.08.02';
+        const CHANGELOG = {
+            '2026.08.02': {
+                titulo: 'Actualización del 2 de agosto',
+                novedades: [
+                    'Los miembros con plan "Día" quedan ocultos por defecto en la lista (sin borrarse); hay un botón para mostrarlos',
+                    'El nombre de la pareja en el plan "Pareja" ahora es opcional',
+                    'Aviso de "Novedades" como este, para que veas qué cambió en cada actualización',
+                    'Mejoras y optimización para un mejor funcionamiento'
+                ],
+                bugs: [
+                    'Se corrigió que a veces el primer toque en "Miembros" o "Capital" no respondía y había que tocar dos veces',
+                    'Se corrigió que la descripción fuera obligatoria al registrar un gasto o pago'
+                ]
+            }
+        };
+
+        function verificarNovedades() {
+            const vista = localStorage.getItem('kaizen-version-vista');
+            if (vista === APP_VERSION) return;
+            const info = CHANGELOG[APP_VERSION];
+            if (!info) { localStorage.setItem('kaizen-version-vista', APP_VERSION); return; }
+            const modal = document.getElementById('novedadesModal');
+            if (!modal) return;
+            document.getElementById('novedadesTitulo').textContent = '🚀 ' + info.titulo;
+            const listaNov = document.getElementById('novedadesLista');
+            listaNov.innerHTML = info.novedades.map(n => '<li>' + n + '</li>').join('');
+            const seccionBugs = document.getElementById('novedadesBugsSeccion');
+            const listaBugs = document.getElementById('novedadesBugsLista');
+            if (info.bugs && info.bugs.length) {
+                seccionBugs.style.display = 'block';
+                listaBugs.innerHTML = info.bugs.map(b => '<li>' + b + '</li>').join('');
+            } else {
+                seccionBugs.style.display = 'none';
+            }
+            modal.classList.add('show');
+        }
+
+        function cerrarNovedades() {
+            localStorage.setItem('kaizen-version-vista', APP_VERSION);
+            document.getElementById('novedadesModal').classList.remove('show');
+        }
+
         const DEFAULT_USER = 'admin';
         const DEFAULT_PASS = 'kaizen2024';
         const MAX_ATTEMPTS = 3;
@@ -640,7 +689,11 @@
                 userInput.value = ''; passInput.value = '';
                 attemptsDiv.textContent = ''; attemptsDiv.className = 'login-attempts';
                 loginBtn.disabled = false;
-                init(); showToast(`✅ Bienvenido, ${usuarioFinal}`);
+                // "admin" es solo el usuario compartido de acceso, no un nombre de persona.
+                // Si no se identificó una persona específica (pregunta/correo configurados
+                // con "Tu nombre"), mostramos "Fernando" (el dueño) en vez de "admin".
+                const nombreVisible = usuarioFinal.toLowerCase() === 'admin' ? 'Fernando' : usuarioFinal;
+                init(); showToast(`✅ Bienvenido, ${nombreVisible}`);
             }
 
             function fallarLogin(userIntentado) {
@@ -796,7 +849,7 @@
             'Pareja': { precio: 900, dias: 1, tipo: 'meses' }
         };
         let planSeleccionado = 'Mes', precioSeleccionado = 500, diasSeleccionados = 1, tipoSeleccionado = 'meses';
-        let miembros = [], gastos = [], historialNotificaciones = [], gananciasChart = null, filtroActual = 'todos', busquedaActual = '';
+        let miembros = [], gastos = [], historialNotificaciones = [], gananciasChart = null, filtroActual = 'todos', busquedaActual = '', mostrarDia = false;
         let _fbSyncTimer = null, _fbBloqueado = false, _fbUnsubscribe = null, _corteVerificadoConFirebase = false, _primerSnapshotRecibido = false;
 
         function cargarDatos() { 
@@ -1384,6 +1437,10 @@
 
         function getMiembrosFiltrados() { 
             let todos = [...miembros];
+            // Los miembros de plan "Día" quedan ocultos por defecto (no se borran, solo
+            // no estorban en la lista principal). Se ven si activas el toggle o si buscas
+            // directamente a alguien (aunque sea de Día).
+            if (!mostrarDia && !busquedaActual) { todos = todos.filter(m => m.plan !== 'Día'); }
             // Filtro por categoría
             switch (filtroActual) { 
                 case 'activos': todos = todos.filter(m => m.activo === true && (diasRestantes(m.vencimiento) === null || diasRestantes(m.vencimiento) >= 0)); break;
@@ -1505,7 +1562,22 @@
             window.open(url, '_blank');
         }
 
+        function actualizarBotonDia() {
+            const btn = document.getElementById('toggleDiaBtn');
+            if (!btn) return;
+            const count = miembros.filter(m => m.plan === 'Día').length;
+            btn.classList.toggle('active', mostrarDia);
+            btn.innerHTML = (mostrarDia ? '🙈 Ocultar miembros de Día (' : '👁️ Mostrar miembros de Día (') + count + ')';
+        }
+
+        function toggleMostrarDia() {
+            mostrarDia = !mostrarDia;
+            actualizarBotonDia();
+            renderMiembros();
+        }
+
         function renderMiembros() { 
+            actualizarBotonDia();
             const list = document.getElementById('memberList'); const filtrados = getMiembrosFiltrados(); 
             if (filtrados.length === 0) { 
                 if (busquedaActual) {
@@ -1842,6 +1914,22 @@
 
         function verificarCortesAutomaticos() {
             let cortes = getCortesCapital();
+
+            // Protección: si por alguna razón hay cortes guardados con el formato
+            // SEMANAL (ids tipo "2026-08-03", de una versión anterior de la app), no los
+            // recalculamos como si fueran quincenas — eso movería el Capital de golpe con
+            // datos que no aplican. En vez de eso, arrancamos el conteo quincenal desde
+            // HOY, dejando el Capital actual intacto como punto de partida.
+            const formatoSemanal = /^\d{4}-\d{2}-\d{2}$/;
+            const esFormatoSemanal = cortes.length > 0 && formatoSemanal.test(cortes[cortes.length - 1].quincenaId || '');
+            if (esFormatoSemanal) {
+                const infoAnteriorMigracion = quincenaInfoAnterior(quincenaInfo(new Date()));
+                cortes = [{ fecha: hoy(), quincenaId: idQuincenaInfo(infoAnteriorMigracion), quincenaLabel: labelQuincenaInfo(infoAnteriorMigracion), monto: 0, automatico: true, inicial: true }];
+                guardarCortesCapital(cortes);
+                syncFirebase();
+                showToast('📅 Se restauraron los cierres por quincena. Tu Capital actual queda como punto de partida.');
+                return;
+            }
             const infoAnterior = quincenaInfoAnterior(quincenaInfo(new Date()));
 
             // Primera vez que corre este sistema: no reconstruye meses pasados de golpe,
@@ -2030,6 +2118,7 @@
             const mInicio = document.getElementById('m-inicio'); const gFecha = document.getElementById('g-fecha'); 
             if (mInicio) mInicio.value = hoy(); if (gFecha) gFecha.value = hoy(); 
             actualizarVencimiento(); actualizarTodo();
+            setTimeout(verificarNovedades, 600);
             // Ya NO llamamos verificarCortesAutomaticos() aquí de una vez: eso corría con
             // datos locales que podían estar vacíos (recién logueado, caché borrada, etc.)
             // y disparaba una subida a Firebase que sobrescribía los datos reales.
@@ -2039,6 +2128,23 @@
             setTimeout(() => { if (!_corteVerificadoConFirebase) { _corteVerificadoConFirebase = true; verificarCortesAutomaticos(); actualizarTodo(); } }, 8000);
         }
     </script>
+    <!-- Modal Novedades / Changelog -->
+    <div class="change-password-modal" id="novedadesModal">
+        <div class="change-password-card">
+            <div class="change-password-title" id="novedadesTitulo">🚀 Novedades</div>
+            <div class="change-password-sub">Esto es lo que trajo la última actualización:</div>
+            <div style="margin-top:14px">
+                <div style="font-size:11px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px">✨ Novedades</div>
+                <ul id="novedadesLista" style="margin:0; padding-left:18px; font-size:13px; color:#fff; line-height:1.6"></ul>
+            </div>
+            <div id="novedadesBugsSeccion" style="margin-top:16px; display:none">
+                <div style="font-size:11px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:6px">🐛 Bugs corregidos</div>
+                <ul id="novedadesBugsLista" style="margin:0; padding-left:18px; font-size:13px; color:#fff; line-height:1.6"></ul>
+            </div>
+            <button class="btn-primary" onclick="cerrarNovedades()" style="width:100%; margin-top:20px">👍 Entendido</button>
+        </div>
+    </div>
+
     <!-- Modal Restaurar Respaldo -->
     <div class="change-password-modal" id="restaurarModal">
         <div class="change-password-card">
