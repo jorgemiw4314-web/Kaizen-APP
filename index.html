@@ -298,6 +298,17 @@
         .empty-icon { font-size: 40px; display: block; margin-bottom: 8px; }
         .empty-title { font-weight: 600; font-size: 14px; color: #fff; margin-bottom: 3px; }
         .empty-desc { font-size: 10px; color: var(--text3); }
+        .sync-pill { background: var(--surface2); border: 1px solid var(--border); border-radius: 999px; font-size: 13px; line-height: 1; padding: 5px 7px; cursor: pointer; color: var(--text); }
+        .sync-pill.offline { border-color: var(--orange); }
+        .sync-pill.error { border-color: #ef4444; }
+        .sync-pill.pendiente { animation: syncPulso 1.2s ease-in-out infinite; }
+        @keyframes syncPulso { 50% { opacity: .45; } }
+        @media (prefers-reduced-motion: reduce) { .sync-pill.pendiente { animation: none; } }
+        .cola-wa { position: fixed; left: 12px; right: 12px; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); max-width: 480px; margin: 0 auto; display: none; align-items: center; gap: 8px; background: var(--surface2); border: 1px solid var(--green); border-radius: 12px; padding: 10px 12px; z-index: 998; box-shadow: 0 8px 30px rgba(0,0,0,0.5); }
+        .cola-wa.show { display: flex; }
+        .cola-wa-texto { flex: 1; font-size: 12px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .cola-wa-btn { background: var(--green); color: #0a0a0a; border: none; border-radius: 8px; padding: 8px 12px; font-weight: 700; font-size: 12px; cursor: pointer; }
+        .cola-wa-cerrar { background: none; border: none; color: var(--text2); font-size: 16px; cursor: pointer; padding: 4px 6px; }
         .toast { position: fixed; bottom: calc(20px + var(--sb, 0px)); left: 50%; transform: translateX(-50%) translateY(100px); background: #fff; color: #0a0a0a; padding: 8px 16px; border-radius: 50px; font-size: 11px; font-weight: 600; z-index: 999; box-shadow: 0 8px 30px rgba(0,0,0,0.4); transition: transform 0.4s cubic-bezier(.16,1,.3,1), opacity 0.4s; opacity: 0; white-space: nowrap; }
         .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s; backdrop-filter: blur(3px); }
@@ -408,7 +419,7 @@
     </div>
 
     <div class="app-container" id="appContainer">
-        <div class="hdr"><div class="hdr-inner"><div class="logo-wrap"><div class="logo-icon">改</div><div><div class="logo-text">KAIZEN</div><div class="logo-sub">FITNESS</div></div></div><div class="hdr-right"><div class="menu-utilidades"><button class="change-pass-btn" onclick="toggleMenuUtilidades()" title="Más opciones">⚙️</button><div class="menu-utilidades-dropdown" id="menuUtilidadesDropdown"><button onclick="recuperarDatosAntiguos()">📦 Recuperar datos antiguos</button><button onclick="forzarSincronizacionFirebase()">🔄 Traer datos de Firebase</button><button onclick="descargarRespaldo()">💾 Descargar respaldo</button><button onclick="abrirRestaurarModal()">📥 Restaurar respaldo</button><button onclick="abrirCambioPassword()">🔑 Cambiar contraseña</button></div></div><button class="logout-btn" onclick="logout()" title="Cerrar sesión">🚪 Salir</button><button class="alert-badge" id="alertBadge" onclick="showTab('notificaciones', document.querySelectorAll('.tab-btn')[3])">🔔 <span id="alertCount">0</span></button><div class="hdr-date" id="hdrDate"></div></div></div></div>
+        <div class="hdr"><div class="hdr-inner"><div class="logo-wrap"><div class="logo-icon">改</div><div><div class="logo-text">KAIZEN</div><div class="logo-sub">FITNESS</div></div></div><div class="hdr-right"><button class="sync-pill ok" id="syncEstado" onclick="tocarEstadoSync()" title="Todo guardado en la nube" aria-label="Todo guardado en la nube">☁️</button><div class="menu-utilidades"><button class="change-pass-btn" onclick="toggleMenuUtilidades()" title="Más opciones">⚙️</button><div class="menu-utilidades-dropdown" id="menuUtilidadesDropdown"><button onclick="recuperarDatosAntiguos()">📦 Recuperar datos antiguos</button><button onclick="forzarSincronizacionFirebase()">🔄 Traer datos de Firebase</button><button onclick="descargarRespaldo()">💾 Descargar respaldo</button><button onclick="abrirRestaurarModal()">📥 Restaurar respaldo</button><button onclick="abrirCambioPassword()">🔑 Cambiar contraseña</button></div></div><button class="logout-btn" onclick="logout()" title="Cerrar sesión">🚪 Salir</button><button class="alert-badge" id="alertBadge" onclick="showTab('notificaciones', document.querySelectorAll('.tab-btn')[3])">🔔 <span id="alertCount">0</span></button><div class="hdr-date" id="hdrDate"></div></div></div></div>
 
         <div class="sbar">
             <div class="stat-row">
@@ -531,6 +542,7 @@
 
     <div class="modal-overlay" id="modalOverlay" onclick="cerrarModal()"></div>
     <div class="modal-sheet" id="modalSheet"><div class="modal-handle"></div><div class="modal-header"><div class="modal-icon" id="modalIcon"></div><div><div class="modal-title" id="modalTitle"></div><div class="modal-subtitle" id="modalSubtitle"></div></div></div><div class="modal-body" id="modalBody"></div></div>
+    <div class="cola-wa" id="colaWa" role="status"><div class="cola-wa-texto" id="colaWaTexto"></div><button class="cola-wa-btn" onclick="abrirSiguienteWa()">📱 Abrir</button><button class="cola-wa-cerrar" onclick="terminarColaWa()" aria-label="Terminar envío">✕</button></div>
     <div class="toast" id="toast">✅ <span id="toastMsg"></span></div>
 
     <!-- Firebase SDK -->
@@ -553,7 +565,8 @@
             doc: (db, col, id) => db.collection(col).doc(id),
             setDoc: (ref, data) => ref.set(data),
             getDoc: (ref) => ref.get(),
-            onSnapshot: (ref, cb, err) => ref.onSnapshot(cb, err)
+            onSnapshot: (ref, cb, err) => ref.onSnapshot(cb, err),
+            runTransaction: (fn) => _db.runTransaction(fn)
         };
     </script>
 
@@ -562,8 +575,26 @@
         // Cada vez que se actualiza la app, se sube el número de APP_VERSION y se agrega
         // una entrada nueva a CHANGELOG. La primera vez que alguien abre la app después
         // de esa actualización, le sale un aviso mostrando qué cambió.
-        const APP_VERSION = '2026.08.02';
+        const APP_VERSION = '2026.09.23';
         const CHANGELOG = {
+            '2026.09.23': {
+                titulo: 'Actualización del 23 de septiembre',
+                novedades: [
+                    'Sincronización nueva: los datos ya no se pueden borrar ni pisar entre celulares',
+                    'Si no hay internet, los cambios se guardan y se suben solos al volver la señal',
+                    'Indicador ☁️ arriba: te dice si todo está guardado en la nube (⏳ subiendo, 📴 sin internet, ⚠️ error)',
+                    'Cada cliente muestra su fecha de registro',
+                    'Las contraseñas y respuestas secretas ya no se guardan en texto plano'
+                ],
+                bugs: [
+                    'Se corrigió que se pudieran perder datos al usar la app en dos celulares o con internet lento',
+                    'Se corrigió que los recordatorios masivos solo abrieran el primer WhatsApp',
+                    'Se corrigió que no se pudiera editar un cliente de plan Día sin teléfono',
+                    'Pagos o gastos con fecha de una quincena ya cerrada ahora sí ajustan el Capital',
+                    'El plan Mes iniciado el 30 o 31 ya vence en el último día del mes siguiente',
+                    '"Por vencer" ahora usa el mismo criterio (5 días) en toda la app'
+                ]
+            },
             '2026.08.02': {
                 titulo: 'Actualización del 2 de agosto',
                 novedades: [
@@ -606,15 +637,58 @@
         }
 
         const DEFAULT_USER = 'admin';
+        // La contraseña por defecto SOLO funciona en una instalación nueva, cuando todavía
+        // no existe ninguna cuenta guardada en Firebase. En cuanto se crea una, deja de servir.
         const DEFAULT_PASS = 'kaizen2024';
         const MAX_ATTEMPTS = 3;
         const BLOCK_TIME = 300000;
         let loginAttempts = 0;
         let blockUntil = null;
 
+        // ===== HASH (SHA-256) =====
+        // Las contraseñas y respuestas secretas ya no se guardan en texto plano: solo su
+        // "huella" (hash), que sirve para comparar pero no se puede regresar a la contraseña.
+        function sha256(texto) {
+            const K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+            const bytes = new TextEncoder().encode(String(texto));
+            const largo = bytes.length, total = ((largo + 9 + 63) >> 6) << 6;
+            const buf = new Uint8Array(total); buf.set(bytes); buf[largo] = 0x80;
+            const dv = new DataView(buf.buffer);
+            dv.setUint32(total - 4, (largo * 8) >>> 0); dv.setUint32(total - 8, Math.floor(largo / 0x20000000));
+            let H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+            const W = new Uint32Array(64);
+            const rot = (x, n) => (x >>> n) | (x << (32 - n));
+            for (let i = 0; i < total; i += 64) {
+                for (let t = 0; t < 16; t++) W[t] = dv.getUint32(i + t * 4);
+                for (let t = 16; t < 64; t++) {
+                    const s0 = rot(W[t-15], 7) ^ rot(W[t-15], 18) ^ (W[t-15] >>> 3);
+                    const s1 = rot(W[t-2], 17) ^ rot(W[t-2], 19) ^ (W[t-2] >>> 10);
+                    W[t] = (W[t-16] + s0 + W[t-7] + s1) >>> 0;
+                }
+                let [a, b, c, d, e, f, g, h] = H;
+                for (let t = 0; t < 64; t++) {
+                    const t1 = (h + (rot(e, 6) ^ rot(e, 11) ^ rot(e, 25)) + ((e & f) ^ (~e & g)) + K[t] + W[t]) >>> 0;
+                    const t2 = ((rot(a, 2) ^ rot(a, 13) ^ rot(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) >>> 0;
+                    h = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0;
+                }
+                H = [H[0] + a, H[1] + b, H[2] + c, H[3] + d, H[4] + e, H[5] + f, H[6] + g, H[7] + h].map(x => x >>> 0);
+            }
+            return H.map(x => x.toString(16).padStart(8, '0')).join('');
+        }
+        function hashPass(p) { return sha256('kaizen-fitness::pass::' + String(p)); }
+        function hashResp(r) { return sha256('kaizen-fitness::resp::' + normalizarTexto(String(r || ''))); }
+
         function getStoredUser() { return localStorage.getItem('kaizen-user') || DEFAULT_USER; }
-        function getStoredPassword() { return localStorage.getItem('kaizen-password') || DEFAULT_PASS; }
+        function getStoredPassHash() {
+            // Migración: versiones anteriores guardaban la contraseña en texto plano en el celular
+            const vieja = localStorage.getItem('kaizen-password');
+            if (vieja !== null) { localStorage.setItem('kaizen-pass-hash', hashPass(vieja)); localStorage.removeItem('kaizen-password'); }
+            return localStorage.getItem('kaizen-pass-hash');
+        }
         function isLoggedIn() { return sessionStorage.getItem('kaizen-auth') === 'true'; }
+        function conTiempoLimite(promesa, ms) {
+            return Promise.race([promesa, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+        }
 
         function login() {
             const userInput = document.getElementById('loginUser');
@@ -640,46 +714,51 @@
             if (!pass) { passError.textContent = 'Ingresa la contraseña'; passInput.classList.add('error'); return; }
 
             loginBtn.disabled = true;
+            const passHash = hashPass(pass);
 
-            // 1) Intentamos validar contra Firebase (fuente compartida entre todos los
-            //    dispositivos). 2) Si no hay internet o no hay cuentas configuradas ahí,
-            //    caemos al respaldo local de este dispositivo (comportamiento anterior).
+            // Respaldo sin internet: valida contra la huella guardada en este celular.
             const intentarLoginLocal = () => {
-                if (user === getStoredUser() && pass === getStoredPassword()) {
-                    completarLogin(user);
-                } else {
-                    fallarLogin(user);
+                const guardado = getStoredPassHash();
+                if (!guardado) {
+                    loginBtn.disabled = false;
+                    attemptsDiv.textContent = '📶 La primera vez en este celular necesitas internet para entrar';
+                    attemptsDiv.className = 'login-attempts warning';
+                    return;
                 }
+                if (user.toLowerCase() === getStoredUser().toLowerCase() && passHash === guardado) completarLogin(getStoredUser());
+                else fallarLogin();
             };
 
-            if (window._fb) {
-                try {
-                    const { db, doc, getDoc } = window._fb;
-                    getDoc(doc(db, 'kaizen_auth', 'config')).then(snap => {
-                        const cuentas = (snap.exists && Array.isArray(snap.data().cuentas)) ? snap.data().cuentas : [];
-                        const cuenta = cuentas.find(c => (c.usuario || '').toLowerCase() === user.toLowerCase());
-                        const personas = (cuenta && Array.isArray(cuenta.personas)) ? cuenta.personas : [];
-                        const match = personas.find(p => p.password === pass);
-                        if (cuenta && match) {
-                            // Guardamos localmente para que este dispositivo también
-                            // funcione offline con las mismas credenciales.
-                            localStorage.setItem('kaizen-user', cuenta.usuario);
-                            localStorage.setItem('kaizen-password', match.password);
-                            completarLogin(match.persona || cuenta.usuario);
-                        } else if (cuenta && personas.length) {
-                            // La cuenta existe y ya tiene personas registradas, pero
-                            // ninguna coincide con esta contraseña.
-                            fallarLogin(user);
-                        } else {
-                            // Esa cuenta no existe en Firebase todavía (nunca se ha
-                            // guardado ahí): probamos con el respaldo local/default.
-                            intentarLoginLocal();
-                        }
-                    }).catch(() => intentarLoginLocal());
-                } catch (e) { intentarLoginLocal(); }
-            } else {
-                intentarLoginLocal();
-            }
+            if (!window._fb) { intentarLoginLocal(); return; }
+            const { db, doc, getDoc } = window._fb;
+            conTiempoLimite(getDoc(doc(db, 'kaizen_auth', 'config')), 7000).then(snap => {
+                const cuentas = (snap.exists && Array.isArray(snap.data().cuentas)) ? snap.data().cuentas : [];
+                if (cuentas.length === 0) {
+                    // Instalación nueva: todavía no hay cuentas. Solo aquí sirve la contraseña por defecto.
+                    if (user.toLowerCase() === DEFAULT_USER && pass === DEFAULT_PASS) {
+                        localStorage.setItem('kaizen-user', DEFAULT_USER);
+                        localStorage.setItem('kaizen-pass-hash', passHash);
+                        completarLogin(DEFAULT_USER);
+                        setTimeout(() => showToast('🔑 Cambia la contraseña en ⚙️ → Cambiar Credenciales'), 2500);
+                    } else {
+                        intentarLoginLocal();
+                    }
+                    return;
+                }
+                const cuenta = cuentas.find(c => (c.usuario || '').toLowerCase() === user.toLowerCase());
+                const personas = (cuenta && Array.isArray(cuenta.personas)) ? cuenta.personas : [];
+                const match = personas.find(p => p.passHash ? p.passHash === passHash : (p.password !== undefined && String(p.password) === pass));
+                if (cuenta && match) {
+                    localStorage.setItem('kaizen-user', cuenta.usuario);
+                    localStorage.setItem('kaizen-pass-hash', passHash);
+                    migrarCredencialesViejas();
+                    completarLogin(match.persona || cuenta.usuario);
+                } else if (cuenta && personas.length) {
+                    fallarLogin();
+                } else {
+                    intentarLoginLocal();
+                }
+            }).catch(() => intentarLoginLocal());
 
             function completarLogin(usuarioFinal) {
                 loginAttempts = 0; blockUntil = null;
@@ -696,7 +775,7 @@
                 init(); showToast(`✅ Bienvenido, ${nombreVisible}`);
             }
 
-            function fallarLogin(userIntentado) {
+            function fallarLogin() {
                 loginBtn.disabled = false;
                 loginAttempts++;
                 const remaining = MAX_ATTEMPTS - loginAttempts;
@@ -716,25 +795,25 @@
         }
 
         function logout() {
-            if (confirm('¿Cerrar sesión como administrador?')) {
-                // Cancelar suscripción a Firebase
-                if (_fbUnsubscribe) { try { _fbUnsubscribe(); } catch(e) {} _fbUnsubscribe = null; }
-                _corteVerificadoConFirebase = false;
-                _primerSnapshotRecibido = false;
-                // Limpiar datos de localStorage para evitar fugas entre usuarios
-                localStorage.removeItem('kaizen-miembros');
-                localStorage.removeItem('kaizen-gastos');
-                localStorage.removeItem('kaizen-notif-historial');
-                localStorage.removeItem('kaizen-capital-inicial');
-                localStorage.removeItem('kaizen-cortes-capital');
-                localStorage.removeItem('kaizen-migracion-vencidos');
-                // Limpiar variables en memoria
-                miembros = []; gastos = []; historialNotificaciones = [];
-                sessionStorage.removeItem('kaizen-auth');
-                document.getElementById('appContainer').classList.remove('show');
-                document.getElementById('loginContainer').classList.remove('hidden');
-                showToast('👋 Sesión cerrada');
-            }
+            const pendiente = hayPendiente();
+            const msg = pendiente
+                ? '⚠️ Hay cambios que todavía NO se han subido a la nube.\n\nSi cierras sesión ahora se pueden perder. Mejor conéctate a internet y espera a que aparezca ☁️.\n\n¿Cerrar sesión de todos modos?'
+                : '¿Cerrar sesión como administrador?';
+            if (!confirm(msg)) return;
+            if (_fbUnsubscribe) { try { _fbUnsubscribe(); } catch(e) {} _fbUnsubscribe = null; }
+            clearTimeout(_fbSyncTimer);
+            _corteVerificadoConFirebase = false;
+            _primerSnapshotRecibido = false;
+            // Limpiar datos locales para evitar fugas entre usuarios (la copia buena vive en Firebase)
+            ['kaizen-miembros', 'kaizen-gastos', 'kaizen-notif-historial', 'kaizen-capital-inicial', 'kaizen-capital-base', 'kaizen-capital-base-mod',
+             'kaizen-cortes-capital', 'kaizen-eliminados', 'kaizen-pendiente', 'kaizen-reemplazo', 'kaizen-migracion-vencidos'].forEach(k => localStorage.removeItem(k));
+            miembros = []; gastos = []; historialNotificaciones = [];
+            reconstruirSellos();
+            sessionStorage.removeItem('kaizen-auth');
+            document.getElementById('appContainer').classList.remove('show');
+            document.getElementById('loginContainer').classList.remove('hidden');
+            actualizarEstadoSync();
+            showToast('👋 Sesión cerrada');
         }
 
         function toggleMenuUtilidades() {
@@ -765,61 +844,46 @@
             ['currentPassError','newPassError','confirmPassError'].forEach(id => { if(document.getElementById(id)) document.getElementById(id).textContent = ''; });
 
             if (!currentPass) { document.getElementById('currentPassError').textContent = 'Ingresa tu contraseña actual'; hasError = true; }
-            else if (currentPass !== getStoredPassword()) { document.getElementById('currentPassError').textContent = 'Contraseña actual incorrecta'; hasError = true; }
+            else if (hashPass(currentPass) !== getStoredPassHash()) { document.getElementById('currentPassError').textContent = 'Contraseña actual incorrecta'; hasError = true; }
             if (newPass && newPass.length < 6) { document.getElementById('newPassError').textContent = 'Mínimo 6 caracteres'; hasError = true; }
             if (newPass && newPass !== confirmPass) { document.getElementById('confirmPassError').textContent = 'Las contraseñas no coinciden'; hasError = true; }
             const tuPersona = document.getElementById('tuPersona').value.trim();
             if (!tuPersona) { document.getElementById('currentPassError').textContent = document.getElementById('currentPassError').textContent || 'Escribe tu nombre para identificar tu contraseña'; hasError = true; }
             if (hasError) return;
 
-            const cambioUsuario = newUsername && newUsername !== getStoredUser();
+            const cambioUsuario = !!newUsername && newUsername.toLowerCase() !== getStoredUser().toLowerCase();
+            if (cambioUsuario && hayPendiente()) {
+                document.getElementById('currentPassError').textContent = 'Espera a que tus cambios se suban a la nube (☁️) antes de cambiar de usuario';
+                return;
+            }
 
             if (newUsername) localStorage.setItem('kaizen-user', newUsername);
-            if (newPass) localStorage.setItem('kaizen-password', newPass);
+            if (newPass) localStorage.setItem('kaizen-pass-hash', hashPass(newPass));
 
             const pregunta = document.getElementById('preguntaSecreta').value.trim();
             const respuesta = document.getElementById('respuestaSecreta').value.trim();
             const correoRecuperacion = document.getElementById('correoRecuperacion').value.trim();
-            // Guardamos en Firebase la contraseña de ESTA persona, dentro del mismo
-            // usuario compartido (ej. "admin"), sin pisar las contraseñas de las
-            // demás personas que usan ese mismo usuario.
-            guardarRecuperacionFirebase(getStoredUser(), tuPersona, getStoredPassword(), pregunta, respuesta, correoRecuperacion);
+            // Guardamos en Firebase la huella de la contraseña de ESTA persona, dentro del mismo
+            // usuario compartido (ej. "admin"), sin pisar la de las demás personas.
+            guardarRecuperacionFirebase(getStoredUser(), tuPersona, getStoredPassHash(), pregunta, respuesta, correoRecuperacion);
 
-            // Si cambió el usuario, manejar la migración inteligente:
-            // - Si el nuevo usuario no tiene datos en Firebase: subir los actuales
-            // - Si ya tiene datos: cargar los suyos (no sobreescribir)
+            // Cambio de usuario = otro espacio en Firebase. Si ya tiene datos se cargan esos;
+            // si está vacío, se suben los actuales (lo resuelve suscribirFirebase).
             if (cambioUsuario) {
-                suscribirFirebase(); // Resuscribe al nuevo espacio
-                // Si el nuevo usuario no tiene documento, syncFirebase creará uno
-                // con los datos actuales (el onSnapshot solo se dispara si hay datos)
-                setTimeout(() => {
-                    // Si después de suscribir, el espacio sigue vacío en Firebase,
-                    // subimos los datos actuales del usuario anterior
-                    if (window._fb) {
-                        try {
-                            const { db, doc, getDoc } = window._fb;
-                            if (typeof getDoc === 'function') {
-                                getDoc(doc(db, 'kaizen', getUserDocId())).then(snap => {
-                                    if (!snap.exists) syncFirebase();
-                                }).catch(() => {});
-                            } else {
-                                // Fallback: si no hay getDoc disponible, intentar sync de todas formas
-                                // pero solo después de un delay para dar tiempo a onSnapshot
-                                setTimeout(() => syncFirebase(), 800);
-                            }
-                        } catch(e) {}
-                    }
-                }, 500);
+                _primerSnapshotRecibido = false;
+                suscribirFirebase();
             }
 
             cerrarCambioPassword();
             const cambios = [];
             if (newUsername) cambios.push('usuario');
             if (newPass) cambios.push('contraseña');
-            showToast(`✅ ${cambios.length ? cambios.join(' y ') + ' actualizado' + (cambios.length > 1 ? 's' : '') : 'Sin cambios'} exitosamente`);
+            showToast(`✅ ${cambios.length ? cambios.join(' y ') + ' actualizado' + (cambios.length > 1 ? 's' : '') : 'Datos guardados'}`);
         }
 
         window.addEventListener('DOMContentLoaded', () => {
+            getStoredPassHash(); // borra de este celular la contraseña vieja en texto plano
+            actualizarEstadoSync();
             if (isLoggedIn()) {
                 document.getElementById('loginContainer').classList.add('hidden');
                 document.getElementById('appContainer').classList.add('show');
@@ -850,17 +914,21 @@
         };
         let planSeleccionado = 'Mes', precioSeleccionado = 500, diasSeleccionados = 1, tipoSeleccionado = 'meses';
         let miembros = [], gastos = [], historialNotificaciones = [], gananciasChart = null, filtroActual = 'todos', busquedaActual = '', mostrarDia = false;
-        let _fbSyncTimer = null, _fbBloqueado = false, _fbUnsubscribe = null, _corteVerificadoConFirebase = false, _primerSnapshotRecibido = false;
+        let _fbSyncTimer = null, _fbUnsubscribe = null, _corteVerificadoConFirebase = false, _primerSnapshotRecibido = false;
+        const DIAS_POR_VENCER = 5; // mismo criterio de "por vencer" en toda la app
 
         function cargarDatos() { 
             try { 
                 const rawM = localStorage.getItem('kaizen-miembros'); if (rawM) { const p = JSON.parse(rawM); if (Array.isArray(p)) miembros = p; } 
                 const rawG = localStorage.getItem('kaizen-gastos'); if (rawG) { const p = JSON.parse(rawG); if (Array.isArray(p)) gastos = p; } 
                 const rawH = localStorage.getItem('kaizen-notif-historial'); if (rawH) { const p = JSON.parse(rawH); if (Array.isArray(p)) historialNotificaciones = p; } 
+                reconstruirSellos();
                 migrarPausadosVencidos();
             } catch (e) { 
+                // Solo se reinicia la copia de ESTE celular; no se sube nada vacío a Firebase.
                 miembros = []; gastos = []; historialNotificaciones = [];
-                showToast('⚠️ Datos corruptos. Se han reiniciado.');
+                reconstruirSellos();
+                showToast('⚠️ Datos locales dañados. Se cargarán desde la nube.');
             } 
         }
 
@@ -904,11 +972,18 @@
 
         function sumarMeses(fecha, meses) {
             if (!fecha) return '';
-            const partes = fecha.split('-');
-            const dt = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]), 12, 0, 0);
-            if (isNaN(dt.getTime())) return '';
-            dt.setMonth(dt.getMonth() + meses);
-            dt.setDate(dt.getDate() - 1);
+            const [y0, m0, d0] = fecha.split('-').map(Number);
+            if ([y0, m0, d0].some(isNaN)) return '';
+            const destino = new Date(y0, m0 - 1 + meses, 1, 12, 0, 0);
+            const diasMesDestino = new Date(destino.getFullYear(), destino.getMonth() + 1, 0).getDate();
+            let dt;
+            if (d0 > diasMesDestino) {
+                // Ej. 31 de enero + 1 mes: ese día no existe en febrero, así que vence el último día de febrero
+                dt = new Date(destino.getFullYear(), destino.getMonth(), diasMesDestino, 12, 0, 0);
+            } else {
+                dt = new Date(destino.getFullYear(), destino.getMonth(), d0, 12, 0, 0);
+                dt.setDate(dt.getDate() - 1);
+            }
             const y = dt.getFullYear(); const m = String(dt.getMonth() + 1).padStart(2, '0'); const d = String(dt.getDate()).padStart(2, '0');
             return y + '-' + m + '-' + d;
         }
@@ -1029,14 +1104,14 @@
             if (!ok) return; 
             if (planSeleccionado === 'Pareja' && nombre2) { nombre = nombre + ' & ' + nombre2; }
             const ahoraMiembro = Date.now();
-            miembros.push({ id: ahoraMiembro, nombre, telefono, plan: planSeleccionado, precio: precioSeleccionado, inicio, vencimiento, activo: true, diasPausados: 0, fechaPausa: null, pagos: [{ id: ahoraMiembro + 1, fecha: inicio, monto: precioSeleccionado, plan: planSeleccionado }] });
+            miembros.push({ id: ahoraMiembro, nombre, telefono, plan: planSeleccionado, precio: precioSeleccionado, inicio, vencimiento, fechaRegistro: hoy(), activo: true, diasPausados: 0, fechaPausa: null, pagos: [{ id: ahoraMiembro + 1, fecha: inicio, monto: precioSeleccionado, plan: planSeleccionado }] });
             guardarMiembros(); 
             document.getElementById('m-nombre').value = ''; 
             document.getElementById('m-nombre2').value = '';
             document.getElementById('m-telefono').value = ''; 
             document.getElementById('m-inicio').value = hoy();
             document.getElementById('m-dias-usados').value = '0';
-            actualizarVencimiento(); actualizarTodo(); showToast('✅ Miembro registrado: ' + nombre);
+            actualizarVencimiento(); actualizarTodo(); showToast('✅ Miembro registrado: ' + nombre + ' · ' + fmtFecha(hoy()));
             showTab('miembros', document.querySelector('.tab-btn[data-tab="miembros"]')); 
         }
 
@@ -1046,35 +1121,247 @@
             return 'user_' + u;
         }
 
-        function syncFirebase() {
-            if (!window._fb || _fbBloqueado) return;
-            // Blindaje: si todavía no hemos recibido la primera confirmación real de Firebase
-            // y todo se ve vacío localmente, NO subimos nada. Esto evita que un
-            // dispositivo recién abierto (o después de cerrar sesión) sobrescriba
-            // datos reales en Firebase con arreglos vacíos antes de que llegue la sincronización.
-            if (!_primerSnapshotRecibido && miembros.length === 0 && gastos.length === 0 && historialNotificaciones.length === 0) {
-                console.warn('Sync a Firebase pausado: esperando confirmación inicial para evitar sobreescribir datos.');
-                return;
-            }
-            clearTimeout(_fbSyncTimer);
-            _fbSyncTimer = setTimeout(() => {
-                try {
-                    const { db, doc, setDoc } = window._fb;
-                    setDoc(doc(db, 'kaizen', getUserDocId()), {
-                        miembros: miembros,
-                        gastos: gastos,
-                        historialNotificaciones: historialNotificaciones,
-                        capitalInicial: getCapitalInicial(),
-                        cortesCapital: getCortesCapital(),
-                        updatedAt: new Date().toISOString()
-                    }).catch(e => console.warn('FB sync error:', e));
-                } catch (e) { console.warn('FB sync error:', e); }
-            }, 500);
+        // ===================== SINCRONIZACIÓN SEGURA CON FIREBASE =====================
+        // Cómo evita que se borren datos:
+        //  • Cada cliente, gasto y aviso lleva la fecha de su último cambio (_mod).
+        //  • Lo que se borra queda anotado en "eliminados" (con fecha). Así un celular con
+        //    datos viejos no revive lo borrado, ni borra lo que otro celular agregó.
+        //  • Antes de subir, la app LEE lo que hay en Firebase y lo FUSIONA con lo de este
+        //    celular dentro de una transacción. Ya nunca sube la lista completa a ciegas.
+        //  • Sin internet, los cambios quedan guardados en el celular como "pendientes"
+        //    y se suben solos al volver la conexión (aunque cierres la app).
+        const LIMITE_HISTORIAL = 300;
+        const DIAS_CONSERVAR_ELIMINADOS = 365;
+        const BYTES_AVISO = 750000, BYTES_MAX = 1000000;
+        let _syncEnCurso = false, _versionLocal = 0, _ultimoErrorToast = 0, _avisoTamano = false, _estadoSync = 'ok', _listenersSync = false;
+        let _sellos = { m: new Map(), g: new Map(), h: new Map() };
+
+        function hayPendiente() { return localStorage.getItem('kaizen-pendiente') === '1'; }
+        function marcarPendiente() { localStorage.setItem('kaizen-pendiente', '1'); _versionLocal++; }
+        function limpiarPendiente() { localStorage.removeItem('kaizen-pendiente'); }
+        function hayDatosLocales() { return miembros.length > 0 || gastos.length > 0 || historialNotificaciones.length > 0; }
+        function clonar(v) { return JSON.parse(JSON.stringify(v)); }
+
+        function firmaEstable(v) {
+            if (Array.isArray(v)) return '[' + v.map(firmaEstable).join(',') + ']';
+            if (v && typeof v === 'object') return '{' + Object.keys(v).filter(k => k !== '_mod' && v[k] !== undefined).sort().map(k => JSON.stringify(k) + ':' + firmaEstable(v[k])).join(',') + '}';
+            return JSON.stringify(v === undefined ? null : v);
+        }
+        function mapaFirmas(arr) { const mp = new Map(); (arr || []).forEach(it => { if (it && it.id !== undefined) mp.set(String(it.id), firmaEstable(it)); }); return mp; }
+        function reconstruirSellos() { _sellos = { m: mapaFirmas(miembros), g: mapaFirmas(gastos), h: mapaFirmas(historialNotificaciones) }; }
+
+        function normalizarEliminados(e) {
+            e = (e && typeof e === 'object') ? e : {};
+            const obj = x => (x && typeof x === 'object' && !Array.isArray(x)) ? x : {};
+            return { m: obj(e.m), g: obj(e.g), h: obj(e.h) };
+        }
+        function getEliminados() { try { return normalizarEliminados(JSON.parse(localStorage.getItem('kaizen-eliminados') || '{}')); } catch (err) { return normalizarEliminados({}); } }
+        function guardarEliminados(e) { localStorage.setItem('kaizen-eliminados', JSON.stringify(e)); }
+
+        // Detecta qué cambió desde la última vez: a lo modificado le pone fecha (_mod)
+        // y lo que desapareció lo anota como eliminado.
+        function sellarCambios(arr, clave) {
+            const antes = _sellos[clave] || new Map(); const ahora = new Map(); const t = Date.now(); let elim = null;
+            arr.forEach(it => {
+                if (!it || it.id === undefined) return;
+                const k = String(it.id); const f = firmaEstable(it);
+                if (antes.get(k) !== f) it._mod = t;
+                ahora.set(k, f);
+            });
+            antes.forEach((_, k) => { if (!ahora.has(k)) { elim = elim || getEliminados(); elim[clave][k] = t; } });
+            if (elim) guardarEliminados(elim);
+            _sellos[clave] = ahora;
         }
 
-        function guardarMiembros() { localStorage.setItem('kaizen-miembros', JSON.stringify(miembros)); syncFirebase(); }
-        function guardarGastos() { localStorage.setItem('kaizen-gastos', JSON.stringify(gastos)); syncFirebase(); }
-        function guardarHistorial() { localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones)); syncFirebase(); }
+        function guardarMiembros() { sellarCambios(miembros, 'm'); localStorage.setItem('kaizen-miembros', JSON.stringify(miembros)); syncFirebase(); }
+        function guardarGastos() { sellarCambios(gastos, 'g'); localStorage.setItem('kaizen-gastos', JSON.stringify(gastos)); syncFirebase(); }
+        function guardarHistorial() { sellarCambios(historialNotificaciones, 'h'); localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones)); syncFirebase(); }
+
+        // ---- Fusión ----
+        function fusionarLista(local, servidor, tumbas) {
+            const mapa = new Map();
+            (servidor || []).forEach(it => { if (it && it.id !== undefined) mapa.set(String(it.id), it); });
+            (local || []).forEach(it => {
+                if (!it || it.id === undefined) return;
+                const k = String(it.id); const ex = mapa.get(k);
+                if (!ex || (it._mod || 0) > (ex._mod || 0)) mapa.set(k, it);
+            });
+            mapa.forEach((it, k) => { const t = tumbas[k]; if (t && t >= (it._mod || 0)) mapa.delete(k); });
+            return Array.from(mapa.values());
+        }
+        function fusionarEliminados(a, b) {
+            const r = { m: {}, g: {}, h: {} }; const limite = Date.now() - DIAS_CONSERVAR_ELIMINADOS * 86400000;
+            ['m', 'g', 'h'].forEach(c => [a && a[c], b && b[c]].forEach(src => Object.keys(src || {}).forEach(k => {
+                const t = Number(src[k]) || 0; if (t >= limite && (!r[c][k] || t > r[c][k])) r[c][k] = t;
+            })));
+            return r;
+        }
+        function ordenQuincena(id) { const p = String(id).split('-').map(Number); return (p[0] || 0) * 100 + (p[1] || 0) * 2 + (p[2] || 0); }
+        function fusionarCortes(a, b) {
+            const mapa = new Map();
+            [...(b || []), ...(a || [])].forEach(c => {
+                if (!c || !c.quincenaId || esCorteSemanal(c)) return;
+                const ex = mapa.get(c.quincenaId);
+                if (!ex || (ex.inicial && !c.inicial)) mapa.set(c.quincenaId, c);
+            });
+            return Array.from(mapa.values()).sort((x, y) => ordenQuincena(x.quincenaId) - ordenQuincena(y.quincenaId));
+        }
+        function ordenarHistorial(arr) { return (arr || []).slice().sort((a, b) => (Number(b.id) || 0) - (Number(a.id) || 0)).slice(0, LIMITE_HISTORIAL); }
+
+        function datosLocales() {
+            return { miembros: clonar(miembros), gastos: clonar(gastos), historial: clonar(historialNotificaciones), cortes: getCortesCapital(),
+                     base: getCapitalBase(), baseMod: getCapitalBaseMod(), eliminados: getEliminados() };
+        }
+        // Sirve para el documento de Firebase y también para respaldos .json (formato viejo o nuevo)
+        function datosDesdeServidor(d) {
+            d = d || {};
+            const cortes = Array.isArray(d.cortesCapital) ? d.cortesCapital : [];
+            const tieneBase = typeof d.capitalBase === 'number' && !isNaN(d.capitalBase);
+            return {
+                miembros: Array.isArray(d.miembros) ? d.miembros : [],
+                gastos: Array.isArray(d.gastos) ? d.gastos : [],
+                historial: Array.isArray(d.historialNotificaciones) ? d.historialNotificaciones : [],
+                cortes: cortes,
+                base: tieneBase ? d.capitalBase : (parseFloat(d.capitalInicial) || 0) - sumaMontosGuardados(cortes),
+                baseMod: tieneBase ? (Number(d.capitalBaseMod) || 0) : 0,
+                eliminados: normalizarEliminados(d.eliminados)
+            };
+        }
+        function fusionarDatos(L, S, reemplazar) {
+            if (!S) return { ...L, historial: ordenarHistorial(L.historial), eliminados: fusionarEliminados(L.eliminados, null) };
+            const elim = fusionarEliminados(L.eliminados, S.eliminados);
+            if (reemplazar) {
+                // Restaurar respaldo: lo local manda y lo que no venga en él se anota como eliminado
+                const t = Date.now();
+                [['m', 'miembros'], ['g', 'gastos'], ['h', 'historial']].forEach(([c, campo]) => {
+                    const ids = new Set(L[campo].map(it => String(it.id)));
+                    S[campo].forEach(it => { if (it && it.id !== undefined && !ids.has(String(it.id))) elim[c][String(it.id)] = t; });
+                });
+                return { miembros: L.miembros, gastos: L.gastos, historial: ordenarHistorial(L.historial), cortes: L.cortes,
+                         base: L.base, baseMod: Math.max(L.baseMod, S.baseMod), eliminados: elim };
+            }
+            return {
+                miembros: fusionarLista(L.miembros, S.miembros, elim.m),
+                gastos: fusionarLista(L.gastos, S.gastos, elim.g),
+                historial: ordenarHistorial(fusionarLista(L.historial, S.historial, elim.h)),
+                cortes: fusionarCortes(L.cortes, S.cortes),
+                base: L.baseMod > S.baseMod ? L.base : S.base,
+                baseMod: Math.max(L.baseMod, S.baseMod),
+                eliminados: elim
+            };
+        }
+        function aplicarDatos(D) {
+            miembros = D.miembros; gastos = D.gastos; historialNotificaciones = D.historial;
+            localStorage.setItem('kaizen-miembros', JSON.stringify(miembros));
+            localStorage.setItem('kaizen-gastos', JSON.stringify(gastos));
+            localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones));
+            localStorage.setItem('kaizen-cortes-capital', JSON.stringify(D.cortes || []));
+            localStorage.setItem('kaizen-capital-base', String(D.base || 0));
+            localStorage.setItem('kaizen-capital-base-mod', String(D.baseMod || 0));
+            guardarEliminados(D.eliminados || normalizarEliminados({}));
+            reconstruirSellos();
+        }
+        function construirPayload(D) {
+            return clonar({
+                miembros: D.miembros, gastos: D.gastos, historialNotificaciones: D.historial,
+                cortesCapital: D.cortes, capitalBase: D.base, capitalBaseMod: D.baseMod,
+                // Se sigue guardando por compatibilidad con versiones anteriores de la app
+                capitalInicial: Math.round((D.base + sumaCortesVivos(D.cortes, D.miembros, D.gastos)) * 100) / 100,
+                eliminados: D.eliminados, formato: 2, updatedAt: new Date().toISOString()
+            });
+        }
+
+        // ---- Subida ----
+        function syncFirebase() { marcarPendiente(); actualizarEstadoSync(); programarSync(700); }
+        function programarSync(ms) { clearTimeout(_fbSyncTimer); _fbSyncTimer = setTimeout(ejecutarSync, ms === undefined ? 700 : ms); }
+
+        async function ejecutarSync() {
+            if (!hayPendiente()) { actualizarEstadoSync(); return; }
+            if (!window._fb || !isLoggedIn()) return;
+            if (_syncEnCurso) { programarSync(1500); return; }
+            if (navigator.onLine === false) { actualizarEstadoSync(); return; }
+            _syncEnCurso = true; _estadoSync = 'guardando'; actualizarEstadoSync();
+            const version = _versionLocal;
+            const reemplazar = localStorage.getItem('kaizen-reemplazo') === '1';
+            const local = datosLocales();
+            const docId = getUserDocId();
+            const { db, doc, runTransaction } = window._fb;
+            const ref = doc(db, 'kaizen', docId);
+            try {
+                let bytes = 0;
+                const fusion = await conTiempoLimite(runTransaction(async (tx) => {
+                    const snap = await tx.get(ref);
+                    const f = fusionarDatos(local, snap.exists ? datosDesdeServidor(snap.data()) : null, reemplazar);
+                    const payload = construirPayload(f);
+                    bytes = new TextEncoder().encode(JSON.stringify(payload)).length;
+                    if (bytes > BYTES_MAX) throw new Error('DOC_MUY_GRANDE');
+                    tx.set(ref, payload);
+                    return f;
+                }), 25000);
+                if (docId !== getUserDocId()) return; // cambió de usuario mientras subía
+                if (reemplazar) localStorage.removeItem('kaizen-reemplazo');
+                if (version === _versionLocal) { aplicarDatos(fusion); limpiarPendiente(); }
+                else { aplicarDatos(fusionarDatos(datosLocales(), fusion)); programarSync(300); } // hubo cambios mientras subía
+                _estadoSync = 'ok';
+                actualizarTodo();
+                if (bytes > BYTES_AVISO && !_avisoTamano) {
+                    _avisoTamano = true;
+                    setTimeout(() => showToast('⚠️ Los datos se acercan al límite de Firebase'), 1500);
+                }
+            } catch (e) {
+                console.warn('FB sync error:', e);
+                _estadoSync = 'error';
+                if (e && e.message === 'DOC_MUY_GRANDE') {
+                    showToast('⛔ Ya no caben los datos en Firebase. Descarga un respaldo');
+                } else if (Date.now() - _ultimoErrorToast > 60000) {
+                    _ultimoErrorToast = Date.now();
+                    showToast('⚠️ No se pudo guardar en la nube, se reintentará');
+                }
+                programarSync(15000);
+            } finally {
+                _syncEnCurso = false; actualizarEstadoSync();
+            }
+        }
+
+        function actualizarEstadoSync() {
+            const el = document.getElementById('syncEstado'); if (!el) return;
+            let icono, texto, clase;
+            if (!hayPendiente()) { icono = '☁️'; texto = 'Todo guardado en la nube'; clase = 'ok'; }
+            else if (navigator.onLine === false) { icono = '📴'; texto = 'Sin internet · se sube al volver la señal'; clase = 'offline'; }
+            else if (_estadoSync === 'error') { icono = '⚠️'; texto = 'Error al subir · reintentando'; clase = 'error'; }
+            else { icono = '⏳'; texto = 'Subiendo cambios…'; clase = 'pendiente'; }
+            el.textContent = icono; el.title = texto; el.setAttribute('aria-label', texto); el.className = 'sync-pill ' + clase;
+        }
+        function tocarEstadoSync() {
+            const el = document.getElementById('syncEstado');
+            if (el) showToast(el.title);
+            if (hayPendiente()) { _estadoSync = 'guardando'; actualizarEstadoSync(); programarSync(0); }
+        }
+        function iniciarListenersSync() {
+            if (_listenersSync) return; _listenersSync = true;
+            window.addEventListener('online', () => { actualizarEstadoSync(); programarSync(500); });
+            window.addEventListener('offline', actualizarEstadoSync);
+            document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && hayPendiente()) programarSync(300); });
+            setInterval(() => { if (hayPendiente() && !_syncEnCurso && isLoggedIn()) programarSync(0); }, 30000);
+        }
+
+        // Reemplaza TODO (restaurar respaldo / traer datos antiguos). Lo que no venga se marca como eliminado.
+        function reemplazarTodo(data) {
+            const D = datosDesdeServidor(data);
+            const t = Date.now();
+            [D.miembros, D.gastos, D.historial].forEach(arr => arr.forEach(it => { if (it) it._mod = t; }));
+            miembros = D.miembros; gastos = D.gastos; historialNotificaciones = D.historial;
+            sellarCambios(miembros, 'm'); sellarCambios(gastos, 'g'); sellarCambios(historialNotificaciones, 'h');
+            localStorage.setItem('kaizen-miembros', JSON.stringify(miembros));
+            localStorage.setItem('kaizen-gastos', JSON.stringify(gastos));
+            localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones));
+            localStorage.setItem('kaizen-cortes-capital', JSON.stringify(D.cortes));
+            localStorage.setItem('kaizen-capital-base', String(D.base));
+            localStorage.setItem('kaizen-capital-base-mod', String(t));
+            localStorage.setItem('kaizen-reemplazo', '1');
+            syncFirebase();
+            actualizarTodo();
+        }
 
         // ===== RESPALDO / RESTAURAR =====
         function descargarRespaldo() {
@@ -1086,6 +1373,7 @@
                     gastos: gastos || [],
                     historialNotificaciones: historialNotificaciones || [],
                     capitalInicial: getCapitalInicial(),
+                    capitalBase: getCapitalBase(),
                     cortesCapital: getCortesCapital()
                 };
                 const blob = new Blob([JSON.stringify(respaldo, null, 2)], { type: 'application/json' });
@@ -1121,24 +1409,11 @@
             reader.onload = (e) => {
                 try {
                     const data = JSON.parse(e.target.result);
-                    if (!data || (typeof data !== 'object')) throw new Error('Formato inválido');
-                    if (!confirm(`Este respaldo es del ${data.fecha_respaldo ? new Date(data.fecha_respaldo).toLocaleString('es-MX') : 'fecha desconocida'} y tiene ${Array.isArray(data.miembros) ? data.miembros.length : 0} miembros y ${Array.isArray(data.gastos) ? data.gastos.length : 0} movimientos.\n\n¿Restaurar estos datos? Esto reemplazará TODO lo que tienes ahora, tanto local como en Firebase.`)) return;
-
-                    if (Array.isArray(data.miembros)) miembros = data.miembros;
-                    if (Array.isArray(data.gastos)) gastos = data.gastos;
-                    if (Array.isArray(data.historialNotificaciones)) historialNotificaciones = data.historialNotificaciones;
-
-                    localStorage.setItem('kaizen-miembros', JSON.stringify(miembros));
-                    localStorage.setItem('kaizen-gastos', JSON.stringify(gastos));
-                    localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones));
-                    if (data.capitalInicial !== undefined) localStorage.setItem('kaizen-capital-inicial', data.capitalInicial);
-                    if (Array.isArray(data.cortesCapital)) localStorage.setItem('kaizen-cortes-capital', JSON.stringify(data.cortesCapital));
-
-                    // Subir a Firebase para que quede como la fuente de verdad
-                    syncFirebase();
-                    actualizarTodo();
+                    if (!data || typeof data !== 'object' || !Array.isArray(data.miembros)) throw new Error('Formato inválido');
+                    if (!confirm(`Este respaldo es del ${data.fecha_respaldo ? new Date(data.fecha_respaldo).toLocaleString('es-MX') : 'fecha desconocida'} y tiene ${data.miembros.length} miembros y ${Array.isArray(data.gastos) ? data.gastos.length : 0} movimientos.\n\n¿Restaurar estos datos? Esto reemplazará TODO lo que tienes ahora, tanto local como en Firebase.`)) return;
+                    reemplazarTodo(data);
                     cerrarRestaurarModal();
-                    showToast('✅ Datos restaurados correctamente');
+                    showToast('✅ Datos restaurados');
                 } catch (err) {
                     console.error('Error al restaurar:', err);
                     showToast('⚠️ El archivo no es un respaldo válido');
@@ -1148,38 +1423,60 @@
         }
 
         // ===== RECUPERACIÓN DE USUARIO/CONTRASEÑA VÍA FIREBASE =====
-        // Modelo: cada "cuenta" (usuario, ej. "admin") puede tener varias "personas",
-        // cada una con su PROPIA contraseña, pregunta secreta y correo. Así, aunque
-        // todos entren con el mismo usuario, cada quien conserva su propia contraseña
-        // sin pisar la de los demás.
-        function guardarRecuperacionFirebase(usuario, persona, password, pregunta, respuesta, correo) {
-            if (!window._fb || !persona) return;
-            try {
-                const { db, doc, getDoc, setDoc } = window._fb;
-                getDoc(doc(db, 'kaizen_auth', 'config')).then(snap => {
-                    let cuentas = (snap.exists && snap.data().cuentas) ? snap.data().cuentas : [];
-                    if (!Array.isArray(cuentas)) cuentas = [];
-                    let cuentaIdx = cuentas.findIndex(c => (c.usuario || '').toLowerCase() === usuario.toLowerCase());
-                    if (cuentaIdx < 0) { cuentas.push({ usuario: usuario, personas: [] }); cuentaIdx = cuentas.length - 1; }
-                    if (!Array.isArray(cuentas[cuentaIdx].personas)) cuentas[cuentaIdx].personas = [];
-                    const personas = cuentas[cuentaIdx].personas;
-                    const pIdx = personas.findIndex(p => (p.persona || '').toLowerCase() === persona.toLowerCase());
-                    const registro = {
-                        persona: persona,
-                        password: password,
-                        pregunta: pregunta || (pIdx >= 0 ? personas[pIdx].pregunta : ''),
-                        respuesta: respuesta || (pIdx >= 0 ? personas[pIdx].respuesta : ''),
-                        correo: correo || (pIdx >= 0 ? (personas[pIdx].correo || '') : '')
-                    };
-                    if (pIdx >= 0) personas[pIdx] = registro; else personas.push(registro);
-                    setDoc(doc(db, 'kaizen_auth', 'config'), { cuentas: cuentas }).catch(e => console.warn('Error guardando recuperación:', e));
-                }).catch(e => console.warn('Error leyendo config de recuperación:', e));
-            } catch (e) { console.warn(e); }
+        // Modelo: cada "cuenta" (usuario, ej. "admin") puede tener varias "personas", cada una
+        // con su PROPIA contraseña, pregunta secreta y correo. Solo se guardan huellas (hash).
+        function limpiarCredencialesTextoPlano(cuentas) {
+            let cambio = false;
+            cuentas.forEach(c => (Array.isArray(c.personas) ? c.personas : []).forEach(p => {
+                if (p.password !== undefined) { if (!p.passHash && p.password) p.passHash = hashPass(p.password); delete p.password; cambio = true; }
+                if (p.respuesta !== undefined) { if (!p.respHash && p.respuesta) p.respHash = hashResp(p.respuesta); delete p.respuesta; cambio = true; }
+            }));
+            return cambio;
+        }
+        function migrarCredencialesViejas() {
+            if (!window._fb) return;
+            const { db, doc, runTransaction } = window._fb;
+            const ref = doc(db, 'kaizen_auth', 'config');
+            runTransaction(async tx => {
+                const snap = await tx.get(ref);
+                if (!snap.exists) return;
+                const cuentas = Array.isArray(snap.data().cuentas) ? snap.data().cuentas : [];
+                if (limpiarCredencialesTextoPlano(cuentas)) tx.set(ref, { cuentas: cuentas });
+            }).catch(e => console.warn('Migración de credenciales:', e));
+        }
+
+        function guardarRecuperacionFirebase(usuario, persona, passHash, pregunta, respuesta, correo) {
+            if (!window._fb || !persona || !passHash) return;
+            const { db, doc, runTransaction } = window._fb;
+            const ref = doc(db, 'kaizen_auth', 'config');
+            runTransaction(async tx => {
+                const snap = await tx.get(ref);
+                let cuentas = (snap.exists && Array.isArray(snap.data().cuentas)) ? snap.data().cuentas : [];
+                limpiarCredencialesTextoPlano(cuentas);
+                let cuentaIdx = cuentas.findIndex(c => (c.usuario || '').toLowerCase() === usuario.toLowerCase());
+                if (cuentaIdx < 0) { cuentas.push({ usuario: usuario, personas: [] }); cuentaIdx = cuentas.length - 1; }
+                if (!Array.isArray(cuentas[cuentaIdx].personas)) cuentas[cuentaIdx].personas = [];
+                const personas = cuentas[cuentaIdx].personas;
+                const pIdx = personas.findIndex(p => (p.persona || '').toLowerCase() === persona.toLowerCase());
+                const prev = pIdx >= 0 ? personas[pIdx] : {};
+                const registro = {
+                    persona: persona,
+                    passHash: passHash,
+                    pregunta: pregunta || prev.pregunta || '',
+                    respHash: respuesta ? hashResp(respuesta) : (prev.respHash || ''),
+                    correo: correo || prev.correo || ''
+                };
+                if (pIdx >= 0) personas[pIdx] = registro; else personas.push(registro);
+                tx.set(ref, { cuentas: cuentas });
+            }).catch(e => { console.warn('Error guardando recuperación:', e); showToast('⚠️ No se pudo guardar la contraseña en la nube'); });
         }
 
         let _cuentaRecuperarSeleccionada = null;
+        let _intentosRecuperar = 0;
+        const MAX_INTENTOS_RECUPERAR = 5;
 
         function abrirRecuperarModal() {
+            _intentosRecuperar = 0;
             document.getElementById('recuperarModal').classList.add('show');
             document.getElementById('recuperarPaso1').style.display = 'block';
             document.getElementById('recuperarPaso2').style.display = 'none';
@@ -1195,7 +1492,8 @@
                     const disponibles = [];
                     cuentas.forEach(c => {
                         (c.personas || []).forEach(p => {
-                            if (p.pregunta || p.correo) disponibles.push({ usuario: c.usuario, persona: p.persona, password: p.password, pregunta: p.pregunta, respuesta: p.respuesta, correo: p.correo });
+                            const tienePregunta = p.pregunta && (p.respHash || p.respuesta);
+                            if (tienePregunta || p.correo) disponibles.push({ usuario: c.usuario, persona: p.persona, pregunta: p.pregunta, respHash: p.respHash || '', respuestaVieja: p.respuesta || '', correo: p.correo });
                         });
                     });
                     if (!disponibles.length) { document.getElementById('recuperarPaso1Sub').textContent = 'Todavía no hay ninguna cuenta con recuperación configurada. Entra normalmente y actívala en ⚙️ → 🔑 Cambiar Credenciales.'; return; }
@@ -1230,15 +1528,17 @@
             document.getElementById('respuestaRecuperarError').textContent = '';
         }
 
-        function generarCodigo6() { return String(Math.floor(100000 + Math.random() * 900000)); }
+        function generarCodigo6() {
+            try { const a = new Uint32Array(1); crypto.getRandomValues(a); return String(100000 + (a[0] % 900000)); }
+            catch (e) { return String(Math.floor(100000 + Math.random() * 900000)); }
+        }
 
         function enviarCodigoCorreoRecuperar(cuenta) {
             if (typeof emailjs === 'undefined') { showToast('⚠️ El servicio de correo no está listo, intenta otra vez'); return; }
             document.getElementById('recuperarPaso1Sub').textContent = '⏳ Enviando código a tu correo...';
             const codigo = generarCodigo6();
-            const expira = Date.now() + 10 * 60 * 1000;
-            cuenta._codigoTemp = codigo;
-            cuenta._codigoExpira = expira;
+            cuenta._codigoHash = sha256('kaizen-fitness::codigo::' + codigo); // no se guarda el código tal cual
+            cuenta._codigoExpira = Date.now() + 10 * 60 * 1000;
 
             emailjs.send('service_52wsfpk', 'template_t1h49mo', { correo_destino: cuenta.correo, codigo: codigo })
                 .then(() => {
@@ -1257,22 +1557,25 @@
 
         function verificarRespuestaRecuperar() {
             const respuesta = document.getElementById('respuestaRecuperarInput').value.trim();
-            if (!_cuentaRecuperarSeleccionada) return;
+            const c = _cuentaRecuperarSeleccionada;
+            if (!c) return;
+            const errEl = document.getElementById('respuestaRecuperarError');
+            if (_intentosRecuperar >= MAX_INTENTOS_RECUPERAR) { errEl.textContent = 'Demasiados intentos. Cierra y vuelve a empezar'; return; }
 
-            if (_cuentaRecuperarSeleccionada.correo) {
-                if (Date.now() > (_cuentaRecuperarSeleccionada._codigoExpira || 0)) {
-                    document.getElementById('respuestaRecuperarError').textContent = 'El código ya expiró, cierra y vuelve a intentar';
-                    return;
-                }
-                if (respuesta !== _cuentaRecuperarSeleccionada._codigoTemp) {
-                    document.getElementById('respuestaRecuperarError').textContent = 'Código incorrecto';
-                    return;
-                }
+            let correcto;
+            if (c.correo) {
+                if (Date.now() > (c._codigoExpira || 0)) { errEl.textContent = 'El código ya expiró, cierra y vuelve a intentar'; return; }
+                correcto = !!c._codigoHash && sha256('kaizen-fitness::codigo::' + respuesta) === c._codigoHash;
             } else {
-                if (respuesta.toLowerCase() !== (_cuentaRecuperarSeleccionada.respuesta || '').trim().toLowerCase()) {
-                    document.getElementById('respuestaRecuperarError').textContent = 'Respuesta incorrecta';
-                    return;
-                }
+                correcto = c.respHash ? hashResp(respuesta) === c.respHash
+                                      : (!!c.respuestaVieja && respuesta.toLowerCase() === c.respuestaVieja.trim().toLowerCase());
+            }
+            if (!correcto) {
+                _intentosRecuperar++;
+                const quedan = MAX_INTENTOS_RECUPERAR - _intentosRecuperar;
+                errEl.textContent = (c.correo ? 'Código incorrecto' : 'Respuesta incorrecta') + (quedan > 0 ? ` (${quedan} intento(s) más)` : ' · sin intentos, cierra y vuelve a empezar');
+                if (quedan <= 0) { c._codigoHash = null; }
+                return;
             }
             document.getElementById('recuperarPaso2').style.display = 'none';
             document.getElementById('recuperarPaso3').style.display = 'block';
@@ -1284,17 +1587,19 @@
             const nueva = document.getElementById('nuevaPassRecuperar').value.trim();
             const confirmar = document.getElementById('confirmarPassRecuperar').value.trim();
             document.getElementById('nuevaPassRecuperarError').textContent = '';
+            if (!_cuentaRecuperarSeleccionada) return;
             if (nueva.length < 6) { document.getElementById('nuevaPassRecuperarError').textContent = 'Mínimo 6 caracteres'; return; }
             if (nueva !== confirmar) { document.getElementById('nuevaPassRecuperarError').textContent = 'Las contraseñas no coinciden'; return; }
 
-            const usuario = _cuentaRecuperarSeleccionada.usuario;
-            const persona = _cuentaRecuperarSeleccionada.persona;
-            localStorage.setItem('kaizen-user', usuario);
-            localStorage.setItem('kaizen-password', nueva);
-            guardarRecuperacionFirebase(usuario, persona, nueva, _cuentaRecuperarSeleccionada.pregunta, _cuentaRecuperarSeleccionada.respuesta, _cuentaRecuperarSeleccionada.correo);
+            const c = _cuentaRecuperarSeleccionada;
+            const nuevaHash = hashPass(nueva);
+            localStorage.setItem('kaizen-user', c.usuario);
+            localStorage.setItem('kaizen-pass-hash', nuevaHash);
+            // Respuesta vacía = se conserva la respuesta secreta que ya tenía
+            guardarRecuperacionFirebase(c.usuario, c.persona, nuevaHash, c.pregunta, '', c.correo);
 
             cerrarRecuperarModal();
-            document.getElementById('loginUser').value = usuario;
+            document.getElementById('loginUser').value = c.usuario;
             document.getElementById('loginPass').value = '';
             showToast('✅ Contraseña restablecida, ya puedes iniciar sesión');
         }
@@ -1313,16 +1618,8 @@
                     if (!snap.exists) { showToast('⚠️ No existe el documento "datos"'); return; }
                     const data = snap.data();
                     if (!confirm(`El documento antiguo "datos" tiene ${Array.isArray(data.miembros) ? data.miembros.length : 0} miembros y ${Array.isArray(data.gastos) ? data.gastos.length : 0} movimientos.\n\n¿Traer estos datos a TU usuario actual (${getStoredUser()}) y reemplazar lo que ves ahora?`)) return;
-
-                    if (Array.isArray(data.miembros)) { miembros = data.miembros; localStorage.setItem('kaizen-miembros', JSON.stringify(miembros)); }
-                    if (Array.isArray(data.gastos)) { gastos = data.gastos; localStorage.setItem('kaizen-gastos', JSON.stringify(gastos)); }
-                    if (Array.isArray(data.historialNotificaciones)) { historialNotificaciones = data.historialNotificaciones; localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones)); }
-                    if (data.capitalInicial !== undefined) localStorage.setItem('kaizen-capital-inicial', data.capitalInicial);
-                    if (Array.isArray(data.cortesCapital)) localStorage.setItem('kaizen-cortes-capital', JSON.stringify(data.cortesCapital));
-
-                    actualizarTodo();
-                    syncFirebase();
-                    showToast('✅ Datos antiguos recuperados y guardados en tu usuario');
+                    reemplazarTodo(data);
+                    showToast('✅ Datos antiguos recuperados');
                 }).catch(err => {
                     console.error('Error al recuperar datos antiguos:', err);
                     showToast('⚠️ Error al consultar Firebase');
@@ -1337,19 +1634,15 @@
             if (!window._fb) { showToast('⚠️ Firebase no está listo, espera un momento'); return; }
             try {
                 const { db, doc, getDoc } = window._fb;
-                if (typeof getDoc !== 'function') { showToast('⚠️ No se pudo leer Firebase'); return; }
                 showToast('⏳ Consultando Firebase...');
                 getDoc(doc(db, 'kaizen', getUserDocId())).then(snap => {
                     if (!snap.exists) { showToast('⚠️ No hay documento en Firebase para este usuario'); return; }
                     const data = snap.data();
-                    if (!confirm(`Firebase tiene ${Array.isArray(data.miembros) ? data.miembros.length : 0} miembros y ${Array.isArray(data.gastos) ? data.gastos.length : 0} movimientos guardados.\n\n¿Traer estos datos y reemplazar lo que ves ahora en la app?`)) return;
-
-                    if (Array.isArray(data.miembros)) { miembros = data.miembros; localStorage.setItem('kaizen-miembros', JSON.stringify(miembros)); }
-                    if (Array.isArray(data.gastos)) { gastos = data.gastos; localStorage.setItem('kaizen-gastos', JSON.stringify(gastos)); }
-                    if (Array.isArray(data.historialNotificaciones)) { historialNotificaciones = data.historialNotificaciones; localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones)); }
-                    if (data.capitalInicial !== undefined) localStorage.setItem('kaizen-capital-inicial', data.capitalInicial);
-                    if (Array.isArray(data.cortesCapital)) localStorage.setItem('kaizen-cortes-capital', JSON.stringify(data.cortesCapital));
-
+                    const avisoPendiente = hayPendiente() ? '\n\n⚠️ OJO: este celular tiene cambios que todavía no se suben y se van a perder.' : '';
+                    if (!confirm(`Firebase tiene ${Array.isArray(data.miembros) ? data.miembros.length : 0} miembros y ${Array.isArray(data.gastos) ? data.gastos.length : 0} movimientos guardados.\n\n¿Traer estos datos y reemplazar lo que ves ahora en la app?${avisoPendiente}`)) return;
+                    aplicarDatos(datosDesdeServidor(data));
+                    limpiarPendiente(); localStorage.removeItem('kaizen-reemplazo');
+                    _estadoSync = 'ok'; actualizarEstadoSync();
                     actualizarTodo();
                     showToast('✅ Datos traídos desde Firebase');
                 }).catch(err => {
@@ -1362,29 +1655,48 @@
             }
         }
 
+        function despuesDePrimerSnapshot() {
+            if (!_corteVerificadoConFirebase) { _corteVerificadoConFirebase = true; verificarCortesAutomaticos(); }
+        }
+
         function suscribirFirebase() {
             if (!window._fb) { setTimeout(suscribirFirebase, 500); return; }
-            // Si hay una suscripción anterior, cancelarla
             if (_fbUnsubscribe) { try { _fbUnsubscribe(); } catch(e) {} _fbUnsubscribe = null; }
+            const docId = getUserDocId();
             try {
                 const { db, doc, onSnapshot } = window._fb;
-                _fbUnsubscribe = onSnapshot(doc(db, 'kaizen', getUserDocId()), (snap) => {
-                    if (!snap.exists) { _primerSnapshotRecibido = true; return; }
-                    const data = snap.data();
-                    _fbBloqueado = true;
-                    try {
-                        if (Array.isArray(data.miembros)) { miembros = data.miembros; localStorage.setItem('kaizen-miembros', JSON.stringify(miembros)); }
-                        if (Array.isArray(data.gastos)) { gastos = data.gastos; localStorage.setItem('kaizen-gastos', JSON.stringify(gastos)); }
-                        if (Array.isArray(data.historialNotificaciones)) { historialNotificaciones = data.historialNotificaciones; localStorage.setItem('kaizen-notif-historial', JSON.stringify(historialNotificaciones)); }
-                        if (data.capitalInicial !== undefined) { localStorage.setItem('kaizen-capital-inicial', data.capitalInicial); }
-                        if (Array.isArray(data.cortesCapital)) { localStorage.setItem('kaizen-cortes-capital', JSON.stringify(data.cortesCapital)); }
+                _fbUnsubscribe = onSnapshot(doc(db, 'kaizen', docId), (snap) => {
+                    if (docId !== getUserDocId() || !isLoggedIn()) return;
+                    if (!snap.exists) {
+                        if (snap.metadata && snap.metadata.fromCache) return; // sin internet todavía no sabemos si existe
+                        // Espacio vacío en Firebase: si este celular tiene datos, se suben
                         _primerSnapshotRecibido = true;
-                        if (!_corteVerificadoConFirebase) { _corteVerificadoConFirebase = true; verificarCortesAutomaticos(); }
-                        actualizarTodo();
-                    } finally {
-                        _fbBloqueado = false;
+                        if (hayDatosLocales() && !hayPendiente()) marcarPendiente();
+                        if (hayPendiente()) programarSync(300);
+                        despuesDePrimerSnapshot(); actualizarEstadoSync();
+                        return;
                     }
-                }, (err) => console.warn('FB subscribe error:', err));
+                    if (localStorage.getItem('kaizen-reemplazo') === '1') {
+                        // Hay un respaldo restaurado esperando subirse: no mezclamos nada hasta que suba
+                        _primerSnapshotRecibido = true; programarSync(300); return;
+                    }
+                    const servidor = datosDesdeServidor(snap.data());
+                    if (hayPendiente()) {
+                        // Este celular tiene cambios sin subir: se FUSIONAN, no se pisan
+                        aplicarDatos(fusionarDatos(datosLocales(), servidor));
+                        programarSync(300);
+                    } else {
+                        aplicarDatos(servidor);
+                    }
+                    _primerSnapshotRecibido = true;
+                    despuesDePrimerSnapshot();
+                    actualizarTodo(); actualizarEstadoSync();
+                }, (err) => {
+                    console.warn('FB subscribe error:', err);
+                    showToast(err && err.code === 'permission-denied' ? '⛔ Firebase negó el acceso (revisa las reglas)' : '⚠️ Se perdió la conexión con la nube, reintentando');
+                    _fbUnsubscribe = null;
+                    setTimeout(() => { if (isLoggedIn() && !_fbUnsubscribe) suscribirFirebase(); }, 30000);
+                });
             } catch (e) { console.warn('FB subscribe error:', e); }
         }
 
@@ -1397,7 +1709,7 @@
             } else if (m.activo === false) { 
                 const diasGuardados = m.diasPausados || 0; 
                 m.activo = true; m.inicio = hoy(); 
-                // Bug 2 fix: si no hay días guardados, dar al menos 1 día de gracia
+                // Sin días guardados: vence hoy (se le cuenta el día de hoy completo)
                 m.vencimiento = diasGuardados > 0 ? sumarDias(hoy(), diasGuardados) : hoy();
                 m.diasPausados = 0; m.fechaPausa = null; guardarMiembros(); actualizarTodo();
                 showToast('▶️ Membresía reactivada: ' + m.nombre + (diasGuardados > 0 ? ' (vence en ' + diasGuardados + ' días)' : ' (sin días restantes, renueva pronto)')); 
@@ -1533,7 +1845,7 @@
             const nuevoNombre = document.getElementById('edit-nombre').value.trim();
             const nuevoTel = document.getElementById('edit-telefono').value.trim();
             if (!nuevoNombre) { showToast('⚠️ El nombre no puede estar vacío'); return; }
-            if (!nuevoTel) { showToast('⚠️ El teléfono no puede estar vacío'); return; }
+            if (!nuevoTel && m.plan !== 'Día') { showToast('⚠️ El teléfono no puede estar vacío'); return; }
             m.nombre = nuevoNombre;
             m.telefono = nuevoTel;
             guardarMiembros();
@@ -1576,6 +1888,18 @@
             renderMiembros();
         }
 
+        // Fecha en que se dio de alta al cliente. Para registros viejos sin este dato,
+        // se calcula a partir del id (que es el momento exacto en que se creó).
+        function fechaRegistroDe(m) {
+            if (m.fechaRegistro) return m.fechaRegistro;
+            const n = Number(m.id);
+            if (n > 1500000000000 && n < 4102444800000) {
+                const d = new Date(n);
+                return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+            }
+            return null;
+        }
+
         function renderMiembros() { 
             actualizarBotonDia();
             const list = document.getElementById('memberList'); const filtrados = getMiembrosFiltrados(); 
@@ -1591,11 +1915,11 @@
             const ordenados = [...filtrados].sort((a, b) => { if (a.activo === false && b.activo !== false) return 1; if (a.activo !== false && b.activo === false) return -1; return (diasRestantes(a.vencimiento) ?? 9999) - (diasRestantes(b.vencimiento) ?? 9999); });
             list.innerHTML = ordenados.map(m => { 
                 const dias = diasRestantes(m.vencimiento); const pausada = m.activo === false; let sc = 'active', st = 'Al día'; 
-                if (pausada) { sc = 'pausada'; st = 'Pausada'; } else if (dias === null) { sc = 'active'; st = '--'; } else if (dias < 0) { sc = 'expired'; st = 'Vencido'; } else if (dias <= 5) { sc = 'warning'; st = 'Por vencer'; } 
+                if (pausada) { sc = 'pausada'; st = 'Pausada'; } else if (dias === null) { sc = 'active'; st = '--'; } else if (dias < 0) { sc = 'expired'; st = 'Vencido'; } else if (dias <= DIAS_POR_VENCER) { sc = 'warning'; st = 'Por vencer'; } 
                 const pagosArray = m.pagos || []; const pH = pagosArray.length ? '<div class="pagos-list">' + pagosArray.slice().reverse().slice(0, 5).map(p => `<div class="pago-row"><div><span class="pago-plan">${p.plan||m.plan}</span><span class="pago-fecha"> · ${fmtFecha(p.fecha)}</span></div><span class="pago-monto">$${p.monto}</span></div>`).join('') + '</div>' : '<div class="no-pagos">Sin pagos registrados</div>'; 
                 const diasInfo = pausada ? `<div class="dias-guardados-info">💾 ${m.diasPausados || 0} días guardados</div>` : ''; 
                 const pausaBtn = pausada ? `<button class="btn-sm resume" onclick="togglePausaMiembro(${m.id})">▶️ Reactivar</button>` : `<button class="btn-sm pause" onclick="togglePausaMiembro(${m.id})">⏸️ Pausar</button>`; 
-                return `<div class="member-card${pausada?' pausada':''}"><div class="member-top"><div class="member-avatar${pausada?' pausada':''}">${pausada?'⏸️':'💪'}</div><div class="member-info"><div class="member-name">${esc(m.nombre)}</div><div class="member-phone">📱 ${esc(m.telefono)}</div><span class="member-plan-badge${pausada?' pausada':''}">${m.plan} · $${m.precio} MXN</span></div><div class="member-status"><div class="member-days ${sc}">${pausada?'⏸':(dias!==null?dias+'d':'--')}</div><div class="member-status-label">${st}</div></div></div>${diasInfo}${pH}<div class="member-actions">${pausaBtn}${!pausada?`<button class="btn-sm pay" onclick="registrarPago(${m.id})">💰 Pagar</button>`:''}<button class="btn-sm renew" onclick="renovarMiembro(${m.id})">🔄 Renovar</button><button class="btn-sm edit" onclick="editarMiembro(${m.id})">✏️ Editar</button>${m.plan !== 'Día' ? `<button class="btn-sm whatsapp" onclick="enviarWhatsAppIndividual(${m.id})">📱 WhatsApp</button>` : ''}<button class="delete-btn" onclick="eliminarMiembro(${m.id})" style="margin-left:auto">🗑️</button></div></div>`; 
+                return `<div class="member-card${pausada?' pausada':''}"><div class="member-top"><div class="member-avatar${pausada?' pausada':''}">${pausada?'⏸️':'💪'}</div><div class="member-info"><div class="member-name">${esc(m.nombre)}</div><div class="member-phone">📱 ${esc(m.telefono)}</div>${fechaRegistroDe(m) ? `<div class="member-phone">📝 Registrado: ${fmtFecha(fechaRegistroDe(m))}</div>` : ''}<span class="member-plan-badge${pausada?' pausada':''}">${m.plan} · $${m.precio} MXN</span></div><div class="member-status"><div class="member-days ${sc}">${pausada?'⏸':(dias!==null?dias+'d':'--')}</div><div class="member-status-label">${st}</div></div></div>${diasInfo}${pH}<div class="member-actions">${pausaBtn}${!pausada?`<button class="btn-sm pay" onclick="registrarPago(${m.id})">💰 Pagar</button>`:''}<button class="btn-sm renew" onclick="renovarMiembro(${m.id})">🔄 Renovar</button><button class="btn-sm edit" onclick="editarMiembro(${m.id})">✏️ Editar</button>${m.plan !== 'Día' ? `<button class="btn-sm whatsapp" onclick="enviarWhatsAppIndividual(${m.id})">📱 WhatsApp</button>` : ''}<button class="delete-btn" onclick="eliminarMiembro(${m.id})" style="margin-left:auto">🗑️</button></div></div>`; 
             }).join(''); 
         }
 
@@ -1627,7 +1951,7 @@
 
         function renderNotificaciones() { 
             const activos = miembros.filter(m => m.activo === true); 
-            const porVencer = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= -30 && d <= 3; }).sort((a, b) => (diasRestantes(a.vencimiento) ?? 9999) - (diasRestantes(b.vencimiento) ?? 9999)); 
+            const porVencer = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= -30 && d <= DIAS_POR_VENCER; }).sort((a, b) => (diasRestantes(a.vencimiento) ?? 9999) - (diasRestantes(b.vencimiento) ?? 9999)); 
             const notifList = document.getElementById('notifList'); 
             if (porVencer.length === 0) { notifList.innerHTML = '<div class="empty-state"><span class="empty-icon">✅</span><div class="empty-title">Todos al día</div><div class="empty-desc">No hay miembros por vencer</div></div>'; } 
             else { notifList.innerHTML = porVencer.map(m => { const dias = diasRestantes(m.vencimiento); const isUrgent = dias !== null && dias <= 1; return `<div class="notif-card${isUrgent?' urgent':''}"><div class="checkbox-custom" id="chk-${m.id}" onclick="toggleCheck(${m.id})"></div><div class="notif-avatar">💪</div><div class="notif-info"><div class="notif-name">${esc(m.nombre)}</div><div class="notif-detail">📱 ${esc(m.telefono)} · ${m.plan} · Vence: ${fmtFecha(m.vencimiento)}</div></div><div class="notif-days ${isUrgent?'urgent':'warning'}">${dias < 0 ? 'VENCIDO' : dias === 0 ? 'HOY' : dias + 'd'}</div></div>`; }).join(''); } 
@@ -1640,34 +1964,42 @@
         function seleccionarTodos() { document.querySelectorAll('#notifList .checkbox-custom').forEach(c => c.classList.add('checked')); }
         function deseleccionarTodos() { document.querySelectorAll('#notifList .checkbox-custom').forEach(c => c.classList.remove('checked')); }
 
+        // Envío masivo: los navegadores solo dejan abrir WhatsApp cuando tocas un botón,
+        // así que cada chat se abre con su propio toque y solo se registra lo que sí se abrió.
+        let _colaWa = [], _colaWaIdx = 0, _colaWaEnviados = 0;
         function enviarNotificaciones() { 
             const checks = document.querySelectorAll('#notifList .checkbox-custom.checked'); 
             if (checks.length === 0) { showToast('⚠️ Selecciona al menos un miembro'); return; } 
-            const ids = Array.from(checks).map(chk => parseInt(chk.id.replace('chk-', '')));
-            let index = 0;
-            // Bug 3 fix: enviar uno por uno con confirmación entre cada uno para evitar bloqueo de popups
-            function enviarSiguiente() {
-                if (index >= ids.length) { 
-                    guardarHistorial(); actualizarTodo(); 
-                    showToast('📱 ' + ids.length + ' recordatorio(s) registrados'); 
-                    renderNotificaciones(); return; 
-                }
-                const id = ids[index];
-                const m = miembros.find(mb => mb.id === id);
-                if (m) {
-                    abrirWhatsApp(m, 'manual');
-                    historialNotificaciones.unshift({ id: Date.now() + index, miembroId: m.id, nombre: m.nombre, telefono: m.telefono, fecha: hoy(), plan: m.plan, vencimiento: m.vencimiento, tipo: 'manual' });
-                }
-                index++;
-                if (index < ids.length) {
-                    setTimeout(enviarSiguiente, 1200);
-                } else {
-                    guardarHistorial(); actualizarTodo();
-                    showToast('📱 ' + ids.length + ' recordatorio(s) registrados');
-                    renderNotificaciones();
-                }
+            _colaWa = Array.from(checks).map(chk => parseInt(chk.id.replace('chk-', '')));
+            _colaWaIdx = 0; _colaWaEnviados = 0;
+            abrirSiguienteWa();
+        }
+        function siguienteEnColaWa() {
+            for (let i = _colaWaIdx; i < _colaWa.length; i++) {
+                const m = miembros.find(mb => mb.id === _colaWa[i]);
+                if (m && m.telefono) return { m, i };
             }
-            enviarSiguiente();
+            return null;
+        }
+        function abrirSiguienteWa() {
+            const sig = siguienteEnColaWa();
+            if (!sig) { terminarColaWa(); return; }
+            const m = sig.m; _colaWaIdx = sig.i + 1;
+            abrirWhatsApp(m, 'manual');
+            historialNotificaciones.unshift({ id: Date.now(), miembroId: m.id, nombre: m.nombre, telefono: m.telefono, fecha: hoy(), plan: m.plan, vencimiento: m.vencimiento, tipo: 'manual' });
+            _colaWaEnviados++;
+            guardarHistorial();
+            const prox = siguienteEnColaWa();
+            if (!prox) { terminarColaWa(); return; }
+            const total = _colaWa.length;
+            document.getElementById('colaWaTexto').textContent = `Siguiente (${prox.i + 1}/${total}): ${prox.m.nombre}`;
+            document.getElementById('colaWa').classList.add('show');
+        }
+        function terminarColaWa() {
+            document.getElementById('colaWa').classList.remove('show');
+            if (_colaWaEnviados > 0) showToast('📱 ' + _colaWaEnviados + ' recordatorio(s) enviados');
+            _colaWa = []; _colaWaIdx = 0; _colaWaEnviados = 0;
+            actualizarTodo(); renderNotificaciones();
         }
 
         function getQuincena() {
@@ -1733,8 +2065,8 @@
                 icon.textContent = '💰'; title.textContent = 'Ingresos de la Quincena'; sub.textContent = pagosMes.length + ' pagos · Total: ' + fmtMonto(totalMes) + ' · ' + q.label;
                 body.innerHTML = pagosMes.length === 0 ? '<div class="modal-empty"><span class="modal-empty-icon">💸</span>Sin pagos este mes</div>' : pagosMes.map(p => `<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">💪 ${esc(p.nombre)}</div><div class="modal-row-detail">${p.plan||'—'} · ${fmtFecha(p.fecha)}</div></div><div class="modal-row-badge" style="color:var(--green)">${fmtMonto(p.monto)}</div></div>`).join(''); 
             } else if (tipo === 'porVencer') { 
-                const porVencer = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= 0 && d <= 5; }).sort((a, b) => (diasRestantes(a.vencimiento) ?? 999) - (diasRestantes(b.vencimiento) ?? 999));
-                icon.textContent = '⚠️'; title.textContent = 'Por Vencer'; sub.textContent = porVencer.length + ' miembro(s) vencen en ≤ 5 días';
+                const porVencer = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= 0 && d <= DIAS_POR_VENCER; }).sort((a, b) => (diasRestantes(a.vencimiento) ?? 999) - (diasRestantes(b.vencimiento) ?? 999));
+                icon.textContent = '⚠️'; title.textContent = 'Por Vencer'; sub.textContent = porVencer.length + ' miembro(s) vencen en ≤ ' + DIAS_POR_VENCER + ' días';
                 body.innerHTML = porVencer.length === 0 ? '<div class="modal-empty"><span class="modal-empty-icon">✅</span>Nadie vence pronto</div>' : porVencer.map(m => { const d = diasRestantes(m.vencimiento); return `<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">💪 ${esc(m.nombre)}</div><div class="modal-row-detail">${m.plan} · $${m.precio} · Vence ${fmtFecha(m.vencimiento)}</div><div class="modal-row-detail">📱 ${esc(m.telefono)}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0"><div class="modal-row-badge" style="color:${d<=1?'#ef4444':'var(--orange)'}">${d===0?'HOY':d+'d'}</div><button class="btn-sm whatsapp" style="font-size:7px;padding:3px 7px" onclick="cerrarModal();enviarWhatsAppIndividual(${m.id})">📱</button></div></div>`; }).join(''); 
             } else if (tipo === 'pausados') {
                 const pausados = miembros.filter(m => m.activo === false);
@@ -1851,7 +2183,57 @@
         (function() { let startY = 0; const sheet = document.getElementById('modalSheet'); sheet.addEventListener('touchstart', e => { startY = e.touches[0].clientY; }, { passive: true }); sheet.addEventListener('touchend', e => { if (e.changedTouches[0].clientY - startY > 60) cerrarModal(); }, { passive: true }); })();
 
         // ---- CAPITAL ----
-        function getCapitalInicial() { return parseFloat(localStorage.getItem('kaizen-capital-inicial') || 0); }
+        // ---- CAPITAL ----
+        // Capital = base (lo que tú capturas) + ganancia de cada quincena ya cerrada.
+        // La ganancia de las quincenas cerradas se calcula en vivo: si registras un pago o
+        // gasto con fecha de una quincena que ya se cerró, el capital se ajusta solo.
+        function getCapitalBaseMod() { return Number(localStorage.getItem('kaizen-capital-base-mod')) || 0; }
+        // Cierres SEMANALES de una versión vieja (id "2026-08-03"): no cuentan como quincenas
+        function esCorteSemanal(c) { return /^\d{4}-\d{2}-\d{2}$/.test(String((c && c.quincenaId) || '')); }
+        function sumaMontosGuardados(cortes) { return (cortes || []).filter(c => c && !c.inicial && !esCorteSemanal(c)).reduce((s, c) => s + (Number(c.monto) || 0), 0); }
+        function getCapitalBase() {
+            const b = localStorage.getItem('kaizen-capital-base');
+            if (b !== null && !isNaN(parseFloat(b))) return parseFloat(b);
+            // Migración: antes el capital guardaba ya sumados los cierres; separamos la base
+            const viejo = parseFloat(localStorage.getItem('kaizen-capital-inicial') || 0) || 0;
+            const base = viejo - sumaMontosGuardados(getCortesCapital());
+            localStorage.setItem('kaizen-capital-base', String(base));
+            if (localStorage.getItem('kaizen-capital-base-mod') === null) localStorage.setItem('kaizen-capital-base-mod', '0');
+            return base;
+        }
+        function gananciasPorQuincena(mArr, gArr) {
+            const mapa = new Map();
+            const sumar = (fecha, v) => { const fp = new Date(fecha + 'T00:00:00'); if (isNaN(fp.getTime())) return; const id = idQuincenaInfo(quincenaInfo(fp)); mapa.set(id, (mapa.get(id) || 0) + v); };
+            (mArr || []).forEach(m => (m.pagos || []).forEach(p => sumar(p.fecha, Number(p.monto) || 0)));
+            (gArr || []).forEach(g => { if (g.tipo === 'ganancia' || !g.tipo) sumar(g.fecha, -(Number(g.monto) || 0)); });
+            return mapa;
+        }
+        // Cada cierre guarda la ganancia de su quincena tal como estaba al cerrarse (no cambia
+        // aunque después borres clientes viejos). Encima se suman los AJUSTES: pagos o gastos que
+        // registraste DESPUÉS del cierre pero con fecha de esa quincena ya cerrada.
+        function momentoCorte(c) {
+            if (c.creado) return Number(c.creado) || 0;
+            const t = new Date(String(c.fecha || '') + 'T23:59:59').getTime();
+            return isNaN(t) ? 0 : t;
+        }
+        function ajustesPorQuincena(cortes, mArr, gArr) {
+            const cierre = new Map();
+            (cortes || []).forEach(c => { if (c && !c.inicial && !esCorteSemanal(c) && c.quincenaId) cierre.set(c.quincenaId, momentoCorte(c)); });
+            const mapa = new Map();
+            const sumar = (fecha, idRegistro, v) => {
+                const fp = new Date(fecha + 'T00:00:00'); if (isNaN(fp.getTime())) return;
+                const q = idQuincenaInfo(quincenaInfo(fp));
+                if (cierre.has(q) && (Number(idRegistro) || 0) > cierre.get(q)) mapa.set(q, (mapa.get(q) || 0) + v);
+            };
+            (mArr || []).forEach(m => (m.pagos || []).forEach(p => sumar(p.fecha, p.id, Number(p.monto) || 0)));
+            (gArr || []).forEach(g => { if (g.tipo === 'ganancia' || !g.tipo) sumar(g.fecha, g.id, -(Number(g.monto) || 0)); });
+            return mapa;
+        }
+        function sumaCortesVivos(cortes, mArr, gArr) {
+            let ajustes = 0; ajustesPorQuincena(cortes, mArr, gArr).forEach(v => { ajustes += v; });
+            return sumaMontosGuardados(cortes) + ajustes;
+        }
+        function getCapitalInicial() { return getCapitalBase() + sumaCortesVivos(getCortesCapital(), miembros, gastos); }
         function getMovimientosCapital() {
             // El Capital NO incluye pagos de miembros (esos son ingresos del mes).
             // Solo los gastos de tipo "capital" descuentan del Capital.
@@ -1865,13 +2247,15 @@
             el.textContent = '$' + total.toLocaleString('es-MX');
         }
         function abrirCapitalModal() {
-            document.getElementById('capitalInicialInput').value = getCapitalInicial() || '';
+            document.getElementById('capitalInicialInput').value = Math.round(getCapitalInicial() * 100) / 100 || '';
             document.getElementById('capitalModal').classList.add('show');
         }
         function cerrarCapitalModal() { document.getElementById('capitalModal').classList.remove('show'); }
         function guardarCapital() {
             const val = parseFloat(document.getElementById('capitalInicialInput').value) || 0;
-            localStorage.setItem('kaizen-capital-inicial', val);
+            const base = val - sumaCortesVivos(getCortesCapital(), miembros, gastos);
+            localStorage.setItem('kaizen-capital-base', String(base));
+            localStorage.setItem('kaizen-capital-base-mod', String(Date.now()));
             syncFirebase();
             cerrarCapitalModal();
             actualizarCapital();
@@ -1898,17 +2282,6 @@
             }
             return { inicio: new Date(info.año, info.mes, 1, 0, 0, 0), fin: new Date(info.año, info.mes, 15, 23, 59, 59), mitad: 1, mes: info.mes, año: info.año };
         }
-        function gananciaDeQuincena(info) {
-            const ingresos = miembros.reduce((t, m) => t + (m.pagos || []).reduce((s, p) => {
-                const fp = new Date(p.fecha + 'T00:00:00');
-                return (!isNaN(fp.getTime()) && fp >= info.inicio && fp <= info.fin) ? s + p.monto : s;
-            }, 0), 0);
-            const gastosQ = gastos.filter(g => {
-                const fg = new Date(g.fecha + 'T00:00:00');
-                return !isNaN(fg.getTime()) && fg >= info.inicio && fg <= info.fin && (g.tipo === 'ganancia' || !g.tipo);
-            }).reduce((s, g) => s + g.monto, 0);
-            return ingresos - gastosQ;
-        }
         function getCortesCapital() { try { const c = JSON.parse(localStorage.getItem('kaizen-cortes-capital') || '[]'); return Array.isArray(c) ? c : []; } catch (e) { return []; } }
         function guardarCortesCapital(arr) { localStorage.setItem('kaizen-cortes-capital', JSON.stringify(arr)); }
 
@@ -1923,6 +2296,7 @@
             const formatoSemanal = /^\d{4}-\d{2}-\d{2}$/;
             const esFormatoSemanal = cortes.length > 0 && formatoSemanal.test(cortes[cortes.length - 1].quincenaId || '');
             if (esFormatoSemanal) {
+                getCapitalBase(); // conserva el Capital actual como punto de partida
                 const infoAnteriorMigracion = quincenaInfoAnterior(quincenaInfo(new Date()));
                 cortes = [{ fecha: hoy(), quincenaId: idQuincenaInfo(infoAnteriorMigracion), quincenaLabel: labelQuincenaInfo(infoAnteriorMigracion), monto: 0, automatico: true, inicial: true }];
                 guardarCortesCapital(cortes);
@@ -1935,6 +2309,7 @@
             // Primera vez que corre este sistema: no reconstruye meses pasados de golpe,
             // solo marca desde dónde empieza a contar hacia adelante.
             if (cortes.length === 0) {
+                getCapitalBase(); // fija la base antes de agregar el primer cierre
                 cortes.push({ fecha: hoy(), quincenaId: idQuincenaInfo(infoAnterior), quincenaLabel: labelQuincenaInfo(infoAnterior), monto: 0, automatico: true, inicial: true });
                 guardarCortesCapital(cortes);
                 syncFirebase();
@@ -1953,29 +2328,31 @@
             if (pendientes.length === 0) return;
             pendientes.reverse();
 
-            let capitalActual = getCapitalInicial();
+            getCapitalBase(); // fija la base antes de agregar cierres
+            const mapa = gananciasPorQuincena(miembros, gastos);
             let totalAplicado = 0;
             pendientes.forEach(p => {
-                const ganancia = gananciaDeQuincena(p);
-                capitalActual += ganancia;
+                const id = idQuincenaInfo(p);
+                const ganancia = mapa.get(id) || 0;
                 totalAplicado += ganancia;
-                cortes.push({ fecha: hoy(), quincenaId: idQuincenaInfo(p), quincenaLabel: labelQuincenaInfo(p), monto: ganancia, automatico: true });
+                cortes.push({ fecha: hoy(), creado: Date.now(), quincenaId: id, quincenaLabel: labelQuincenaInfo(p), monto: ganancia, automatico: true });
             });
-            localStorage.setItem('kaizen-capital-inicial', capitalActual);
             guardarCortesCapital(cortes);
             syncFirebase();
             actualizarCapital();
             if (totalAplicado !== 0) {
-                showToast((totalAplicado >= 0 ? '✅ Se sumaron ' : '⚠️ Se restaron ') + fmtMonto(Math.abs(totalAplicado)) + ' al Capital (cierre automático de ' + pendientes.length + (pendientes.length > 1 ? ' quincenas' : ' quincena') + ')');
+                showToast((totalAplicado >= 0 ? '✅ Se sumaron ' : '⚠️ Se restaron ') + fmtMonto(Math.abs(totalAplicado)) + ' al Capital (' + pendientes.length + (pendientes.length > 1 ? ' quincenas' : ' quincena') + ')');
             }
         }
 
         function mostrarHistorialCortes() {
             const cortes = getCortesCapital().slice().reverse();
             if (cortes.length === 0) { alert('Todavía no hay cierres registrados.'); return; }
+            const ajustes = ajustesPorQuincena(getCortesCapital(), miembros, gastos);
             const texto = cortes.slice(0, 15).map(c => {
                 if (c.inicial) return c.quincenaLabel + ': punto de partida (sin movimiento)';
-                return c.quincenaLabel + ': ' + (c.monto >= 0 ? '+' : '') + fmtMonto(c.monto);
+                const monto = (Number(c.monto) || 0) + (ajustes.get(c.quincenaId) || 0);
+                return c.quincenaLabel + ': ' + (monto >= 0 ? '+' : '') + fmtMonto(monto);
             }).join('\n');
             alert('📜 Historial de cierres de quincena\n\n' + texto);
         }
@@ -2084,13 +2461,13 @@
             if (document.getElementById('page-gastos').classList.contains('active')) renderGastos();
             if (document.getElementById('page-notificaciones').classList.contains('active')) renderNotificaciones(); 
         }
-        function actualizarAlertBadge() { const activos = miembros.filter(m => m.activo === true); const porVencer = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= -30 && d <= 3; }).length; const badge = document.getElementById('alertBadge'); document.getElementById('alertCount').textContent = porVencer; if (porVencer > 0) badge.classList.add('show'); else badge.classList.remove('show'); }
+        function actualizarAlertBadge() { const activos = miembros.filter(m => m.activo === true); const porVencer = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= -30 && d <= DIAS_POR_VENCER; }).length; const badge = document.getElementById('alertBadge'); document.getElementById('alertCount').textContent = porVencer; if (porVencer > 0) badge.classList.add('show'); else badge.classList.remove('show'); }
 
         function actualizarStats() { 
             const activos = miembros.filter(m => m.activo === true); const pausados = miembros.filter(m => m.activo === false); 
             const ingresosMes = miembros.reduce((t, m) => t + (m.pagos || []).reduce((s, p) => { return enQuincena(p.fecha) ? s + p.monto : s; }, 0), 0); 
             const gastosMes = gastos.filter(g => enQuincena(g.fecha) && (g.tipo === 'ganancia' || !g.tipo)).reduce((s, g) => s + g.monto, 0); 
-            const gananciaLimpia = ingresosMes - gastosMes; const porVencer = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= 0 && d <= 5; }).length;
+            const gananciaLimpia = ingresosMes - gastosMes; const porVencer = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= 0 && d <= DIAS_POR_VENCER; }).length;
             document.getElementById('st-total').textContent = miembros.length;
             document.getElementById('st-activos').textContent = activos.filter(m => { const d = diasRestantes(m.vencimiento); return d !== null && d >= 0; }).length;
             document.getElementById('st-ingresos').textContent = fmtMonto(ingresosMes);
@@ -2106,7 +2483,7 @@
             const alDia = activos.filter(m => { const d = diasRestantes(m.vencimiento); return d !== null && d >= 0; }).length; 
             const vencidos = activos.filter(m => { const d = diasRestantes(m.vencimiento); return d !== null && d < 0; }).length;
             document.getElementById('dashResumen').innerHTML = `<div class="dash-mini" style="cursor:pointer" onclick="irAFiltro('todos')"><div class="dash-mini-icon">👥</div><div class="dash-mini-val">${miembros.length}</div><div class="dash-mini-lbl">Total</div></div><div class="dash-mini" style="cursor:pointer" onclick="irAFiltro('activos')"><div class="dash-mini-icon">✅</div><div class="dash-mini-val" style="color:var(--green)">${alDia}</div><div class="dash-mini-lbl">Al día</div></div><div class="dash-mini" style="cursor:pointer" onclick="irAFiltro('pausados')"><div class="dash-mini-icon">⏸️</div><div class="dash-mini-val" style="color:var(--purple)">${pausados.length}</div><div class="dash-mini-lbl">Pausados</div></div><div class="dash-mini" style="cursor:pointer" onclick="irAFiltro('vencidos')"><div class="dash-mini-icon">❌</div><div class="dash-mini-val" style="color:#ef4444">${vencidos}</div><div class="dash-mini-lbl">Vencidos</div></div>`; 
-            const proximos = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= 0 && d <= 5; }).sort((a, b) => (diasRestantes(a.vencimiento) ?? 999) - (diasRestantes(b.vencimiento) ?? 999)); 
+            const proximos = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= 0 && d <= DIAS_POR_VENCER; }).sort((a, b) => (diasRestantes(a.vencimiento) ?? 999) - (diasRestantes(b.vencimiento) ?? 999)); 
             const venDiv = document.getElementById('dashVencimientos');
             venDiv.innerHTML = proximos.length === 0 ? '<div style="text-align:center;color:var(--text3);padding:14px;font-size:11px">✅ No hay vencimientos próximos</div>' : proximos.map(m => { const d = diasRestantes(m.vencimiento); return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px;background:var(--surface2);border-radius:8px;margin-bottom:5px;border:1px solid var(--border);font-size:11px"><div><div style="font-weight:600">${esc(m.nombre)}</div><div style="font-size:8px;color:var(--text3)">${m.plan} · $${m.precio}</div></div><button class="btn-sm whatsapp" onclick="enviarWhatsAppIndividual(${m.id})" style="font-size:7px;padding:3px 7px">📱</button><div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--orange)">${d===0?'HOY':d+'d'}</div></div>`; }).join(''); 
         }
@@ -2119,13 +2496,13 @@
             if (mInicio) mInicio.value = hoy(); if (gFecha) gFecha.value = hoy(); 
             actualizarVencimiento(); actualizarTodo();
             setTimeout(verificarNovedades, 600);
-            // Ya NO llamamos verificarCortesAutomaticos() aquí de una vez: eso corría con
-            // datos locales que podían estar vacíos (recién logueado, caché borrada, etc.)
-            // y disparaba una subida a Firebase que sobrescribía los datos reales.
-            // Ahora se dispara solo cuando llega la primera confirmación real desde Firebase
-            // (ver suscribirFirebase). Este respaldo es solo por si nunca hay internet.
+            iniciarListenersSync(); actualizarEstadoSync();
+            // Los cierres de quincena se revisan cuando llega la primera respuesta real de Firebase
+            // (ver suscribirFirebase). Si en 8 s no hay internet y este celular sí tiene datos,
+            // se revisan con lo local; al volver la señal se FUSIONA, ya no se sobrescribe nada.
             setTimeout(suscribirFirebase, 300);
-            setTimeout(() => { if (!_corteVerificadoConFirebase) { _corteVerificadoConFirebase = true; verificarCortesAutomaticos(); actualizarTodo(); } }, 8000);
+            if (hayPendiente()) programarSync(1500);
+            setTimeout(() => { if (!_corteVerificadoConFirebase && isLoggedIn() && hayDatosLocales()) { _corteVerificadoConFirebase = true; verificarCortesAutomaticos(); actualizarTodo(); } }, 8000);
         }
     </script>
     <!-- Modal Novedades / Changelog -->
