@@ -5,7 +5,7 @@
 //
 // Cuando subas una versión nueva de la app, cambia VERSION (ej. '2026.09.23' → '2026.10.01').
 // Así sale el aviso "🚀 ¡Nueva versión disponible!" y se limpia la copia vieja.
-const VERSION = '2026.09.23.2';
+const VERSION = '2026.09.23.7';
 const CACHE = 'kaizen-' + VERSION;
 const ESPERA_RED_MS = 4000; // con internet lento, a los 4 s abre la copia guardada
 
