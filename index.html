@@ -349,6 +349,26 @@
             .tabs { flex-wrap: wrap; }
             .tab-btn { flex: 1 1 40%; font-size: 8px; padding: 7px 3px; }
         }
+        .gm-mini { cursor:pointer; text-align:left; }
+        .gm-mes { font-size:9px; color:var(--text2); font-weight:600; text-transform:uppercase; letter-spacing:0.04em; }
+        .gm-val { font-family:'Bebas Neue',sans-serif; font-size:24px; line-height:1.1; }
+        .gm-det { font-size:8px; color:var(--text3); }
+        .gm-comp { margin-top:8px; font-size:10px; color:var(--text2); background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius); padding:8px 10px; line-height:1.5; }
+        .mes-bar-bg { height:5px; border-radius:5px; background:rgba(255,255,255,0.06); margin-top:6px; overflow:hidden; }
+        .mes-bar { height:100%; border-radius:5px; }
+        .mes-rank { font-family:'Bebas Neue',sans-serif; font-size:16px; width:26px; text-align:center; flex-shrink:0; color:var(--text3); }
+        .modal-back { background:var(--surface2); color:var(--text2); border:1px solid var(--border); border-radius:8px; padding:6px 12px; font-size:10px; font-family:'Poppins',sans-serif; cursor:pointer; margin-bottom:10px; }
+        .modal-seccion { font-size:9px; font-weight:700; color:var(--text2); text-transform:uppercase; letter-spacing:0.06em; margin:12px 0 6px; }
+        .tipo-gasto-cards { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+        .tipo-gasto-card { background:var(--surface2); border:2px solid var(--border); border-radius:var(--radius); padding:10px 8px; text-align:center; cursor:pointer; transition:all 0.2s; font-family:'Poppins',sans-serif; color:var(--text2); }
+        .tipo-gasto-card .tg-icon { font-size:20px; }
+        .tipo-gasto-card .tg-name { font-size:11px; font-weight:700; color:#fff; margin-top:2px; }
+        .tipo-gasto-card .tg-desc { font-size:8px; color:var(--text3); margin-top:2px; line-height:1.3; }
+        .tipo-gasto-card.sel-ganancia { border-color:#ef4444; background:rgba(239,68,68,0.1); }
+        .tipo-gasto-card.sel-capital { border-color:var(--gold); background:rgba(212,175,55,0.1); }
+        .tipo-badge { font-size:8px; padding:2px 6px; border-radius:4px; border:none; cursor:pointer; font-family:'Poppins',sans-serif; font-weight:600; margin-left:4px; }
+        .tipo-badge.capital { background:rgba(212,175,55,0.2); color:#d4af37; }
+        .tipo-badge.ganancia { background:rgba(239,68,68,0.2); color:#ef4444; }
         /* Utilidades */
         .flex-gap { display:flex; gap:10px; }
         .btn-cancel { flex:1; background:var(--surface2) !important; color:var(--text2) !important; box-shadow:none !important; }
@@ -425,7 +445,7 @@
             <div class="stat-row">
                 <div class="stat-card highlight" onclick="abrirModalStat('miembros')"><div class="stat-icon">👥</div><div class="stat-value" id="st-total">0</div><div class="stat-label">Miembros</div></div>
                 <div class="stat-card" onclick="abrirModalStat('activos')"><div class="stat-icon">✅</div><div class="stat-value" id="st-activos">0</div><div class="stat-label">Activos</div></div>
-                <div class="stat-card" onclick="abrirModalStat('ingresos')"><div class="stat-icon">💰</div><div class="stat-value" id="st-ingresos">$0</div><div class="stat-label">Ingresos Mes</div></div>
+                <div class="stat-card" onclick="abrirModalStat('ingresos')"><div class="stat-icon">💰</div><div class="stat-value" id="st-ingresos">$0</div><div class="stat-label">Ingresos Quinc.</div></div>
                 <div class="stat-card" onclick="abrirModalStat('porVencer')"><div class="stat-icon">⚠️</div><div class="stat-value" id="st-porVencer">0</div><div class="stat-label">Por vencer</div></div>
             </div>
             <div class="clean-box"><div><div class="clean-label">🏦 Ganancia Limpia (Ingresos - Gastos)</div><div style="font-size:7px;color:var(--text3);margin-top:1px" id="quincelaLabel">Quincena actual</div></div><div class="clean-value" id="gananciaLimpia">$0</div></div>
@@ -445,7 +465,8 @@
 
         <div class="page active" id="page-dashboard">
             <div class="dash-grid">
-                <div class="dash-card"><div class="dash-title">📈 Ganancias vs Gastos</div><div class="dash-sub">Últimos 12 meses · Toca la leyenda para ver detalle</div><div class="chart-container"><canvas id="gananciasChart"></canvas></div><div class="chart-legend"><div class="legend-item" style="cursor:pointer" onclick="abrirModalGrafica('ingresos')"><div class="legend-dot" style="background:var(--green)"></div> Ingresos</div><div class="legend-item" style="cursor:pointer" onclick="abrirModalGrafica('gastos')"><div class="legend-dot" style="background:#ef4444"></div> Gastos</div><div class="legend-item" style="cursor:pointer" onclick="abrirModalGrafica('ganancia')"><div class="legend-dot" style="background:var(--gold)"></div> Ganancia Neta</div></div></div>
+                <div class="dash-card" style="cursor:pointer" onclick="abrirModalMeses()"><div class="dash-title">💵 Ganancias del mes</div><div class="dash-sub">Ingresos − gastos operativos · Toca para ver todos los meses</div><div class="dash-mini-row" id="dashGananciasMes"></div><div class="gm-comp" id="dashGananciasComp"></div></div>
+                <div class="dash-card"><div class="dash-title">📈 Ganancias vs Gastos</div><div class="dash-sub">Últimos 12 meses · Gastos operativos (sin gastos de capital) · Toca la leyenda para ver detalle</div><div class="chart-container"><canvas id="gananciasChart"></canvas></div><div class="chart-legend"><div class="legend-item" style="cursor:pointer" onclick="abrirModalGrafica('ingresos')"><div class="legend-dot" style="background:var(--green)"></div> Ingresos</div><div class="legend-item" style="cursor:pointer" onclick="abrirModalGrafica('gastos')"><div class="legend-dot" style="background:#ef4444"></div> Gastos</div><div class="legend-item" style="cursor:pointer" onclick="abrirModalGrafica('ganancia')"><div class="legend-dot" style="background:var(--gold)"></div> Ganancia Neta</div></div></div>
                 <div class="dash-card"><div class="dash-title">🏋️ Resumen del Gimnasio</div><div class="dash-sub">Vistazo rápido de Kaizen Fitness</div><div class="dash-mini-row" id="dashResumen"></div></div>
                 <div class="dash-card"><div class="dash-title">📅 Próximos Vencimientos</div><div class="dash-sub">Miembros que vencen en los próximos 5 días</div><div id="dashVencimientos"></div></div>
             </div>
@@ -525,7 +546,7 @@
             <div class="form-card" style="margin-bottom:14px">
                 <div class="form-title">💸 Registrar Gasto</div><div class="form-sub">Sueldos, equipo, mantenimiento y más</div>
                 <div class="field-group"><label class="field-label">📂 Categoría</label><select id="g-categoria" aria-label="Categoría del gasto"><option value="Sueldo">💵 Sueldo</option><option value="Equipo">🏋️ Equipo</option><option value="Mantenimiento">🔧 Mantenimiento</option><option value="Renta">🏠 Renta</option><option value="Servicios">💡 Servicios</option><option value="Publicidad">📢 Publicidad</option><option value="Limpieza">🧹 Limpieza</option><option value="Otro">📦 Otro</option></select></div>
-                <div class="field-group"><label class="field-label">💳 Descontar de</label><select id="g-tipo" aria-label="Tipo de gasto"><option value="ganancia">📊 Ganancias del mes</option><option value="capital">💰 Capital</option></select><span style="font-size:9px;color:var(--text3);margin-top:3px;display:block">Ganancias del mes = gasto operativo · Capital = inversión o gasto mayor</span></div>
+                <div class="field-group"><label class="field-label">💳 ¿De dónde se descuenta?</label><input type="hidden" id="g-tipo" value="ganancia"><div class="tipo-gasto-cards"><button type="button" class="tipo-gasto-card sel-ganancia" id="tg-ganancia" onclick="seleccionarTipoGasto('ganancia')"><div class="tg-icon">📊</div><div class="tg-name">Ganancias</div><div class="tg-desc">Gasto del día a día: sueldo, renta, luz, limpieza</div></button><button type="button" class="tipo-gasto-card" id="tg-capital" onclick="seleccionarTipoGasto('capital')"><div class="tg-icon">💰</div><div class="tg-name">Capital</div><div class="tg-desc">Inversión o gasto mayor: equipo, remodelación</div></button></div></div>
                 <div class="field-group"><label class="field-label">📝 Descripción (opcional)</label><input type="text" id="g-descripcion" placeholder="Ej. Pago quincenal instructor" autocomplete="off" aria-label="Descripción del gasto" maxlength="100"><span class="err-msg" id="err-g-descripcion"></span></div>
                 <div class="field-group"><label class="field-label">💲 Monto</label><div class="input-with-prefix"><span class="prefix">$</span><input type="number" id="g-monto" placeholder="0.00" min="0" step="0.01" aria-label="Monto del gasto"></div><span class="err-msg" id="err-g-monto"></span></div>
                 <div class="field-group"><label class="field-label">📅 Fecha</label><input type="date" id="g-fecha" aria-label="Fecha del gasto"></div>
@@ -575,8 +596,24 @@
         // Cada vez que se actualiza la app, se sube el número de APP_VERSION y se agrega
         // una entrada nueva a CHANGELOG. La primera vez que alguien abre la app después
         // de esa actualización, le sale un aviso mostrando qué cambió.
-        const APP_VERSION = '2026.09.23';
+        const APP_VERSION = '2026.09.23.2';
         const CHANGELOG = {
+            '2026.09.23.2': {
+                titulo: 'Ganancias por mes',
+                novedades: [
+                    'Nuevo recuadro en Inicio con la ganancia del mes pasado y del mes actual',
+                    'Comparación justa: cuánto vas arriba o abajo contra el mismo día del mes pasado',
+                    'Toca el recuadro para ver la ganancia de cada mes, y toca un mes para ver sus pagos y gastos',
+                    'Al registrar un gasto eliges con dos botones si se descuenta de las Ganancias o del Capital',
+                    'Puedes cambiar un gasto ya registrado entre Ganancias y Capital tocando su etiqueta (📊/💰)'
+                ],
+                bugs: [
+                    'La gráfica restaba los gastos de capital a la ganancia (en septiembre salía -$1,183 en vez de $4,250)',
+                    'Si la librería de la gráfica no cargaba, se trababa el resto de la pantalla',
+                    'El total de "Todos" en el detalle de la gráfica ahora cuadra con los 12 meses que se ven',
+                    'El recuadro de ingresos decía "Mes" pero mostraba la quincena'
+                ]
+            },
             '2026.09.23': {
                 titulo: 'Actualización del 23 de septiembre',
                 novedades: [
@@ -1923,6 +1960,28 @@
             }).join(''); 
         }
 
+        function seleccionarTipoGasto(tipo) {
+            document.getElementById('g-tipo').value = tipo;
+            document.getElementById('tg-ganancia').className = 'tipo-gasto-card' + (tipo === 'ganancia' ? ' sel-ganancia' : '');
+            document.getElementById('tg-capital').className = 'tipo-gasto-card' + (tipo === 'capital' ? ' sel-capital' : '');
+        }
+
+        // Cambiar un gasto ya registrado entre "Ganancias" y "Capital".
+        // Solo gastos de la quincena actual (los de quincenas cerradas ya se sumaron al Capital).
+        function cambiarTipoGasto(id) {
+            const g = gastos.find(x => x.id === id); if (!g) return;
+            if (!enQuincena(g.fecha)) { showToast('⚠️ Esa quincena ya se cerró, no se puede cambiar'); actualizarTodo(); return; }
+            const actual = g.tipo === 'capital' ? 'capital' : 'ganancia';
+            const nuevo = actual === 'capital' ? 'ganancia' : 'capital';
+            const msg = nuevo === 'capital'
+                ? '¿Cambiar "' + (g.descripcion || g.categoria) + '" (' + fmtMonto(g.monto) + ') a 💰 CAPITAL?\n\nSe restará directo del Capital y ya no de la ganancia de la quincena.'
+                : '¿Cambiar "' + (g.descripcion || g.categoria) + '" (' + fmtMonto(g.monto) + ') a 📊 GANANCIAS?\n\nSe restará de la ganancia de la quincena y se le regresa al Capital.';
+            if (!confirm(msg)) return;
+            g.tipo = nuevo;
+            guardarGastos(); actualizarTodo();
+            showToast(nuevo === 'capital' ? '💰 Ahora se descuenta del Capital' : '📊 Ahora se descuenta de las Ganancias');
+        }
+
         function registrarGasto() { 
             ['g-descripcion', 'g-monto', 'g-fecha'].forEach(clearErr); 
             const categoria = document.getElementById('g-categoria').value; 
@@ -1944,9 +2003,9 @@
             const q = getQuincena();
             const todosMes = gastos.filter(g => enQuincena(g.fecha)).sort((a, b) => new Date(b.fecha + 'T00:00:00') - new Date(a.fecha + 'T00:00:00'));
             const totalGastosMes = todosMes.filter(g => g.tipo === 'ganancia' || !g.tipo).reduce((s, g) => s + g.monto, 0); 
-            document.getElementById('gastosTotalMes').textContent = 'Total ' + q.label + ': ' + fmtMonto(totalGastosMes); 
+            document.getElementById('gastosTotalMes').textContent = 'Total ' + q.label + ': ' + fmtMonto(totalGastosMes) + ' · Toca 📊/💰 para cambiar de dónde se descuenta'; 
             const list = document.getElementById('gastosList'); if (todosMes.length === 0) { list.innerHTML = '<div style="text-align:center;color:var(--text3);padding:20px;font-size:11px">✅ No hay gastos esta quincena</div>'; return; }
-            list.innerHTML = todosMes.map(g => `<div class="gasto-item"><div class="gasto-info"><div class="gasto-categoria">${g.categoria} <span style="font-size:8px;padding:1px 5px;border-radius:4px;background:${g.tipo === 'capital' ? 'rgba(212,175,55,0.2)' : 'rgba(239,68,68,0.2)'};color:${g.tipo === 'capital' ? '#d4af37' : '#ef4444'}">${g.tipo === 'capital' ? '💰 Capital' : '📊 Ganancia'}</span></div><div class="gasto-desc">${esc(g.descripcion)}</div><div class="gasto-fecha">${fmtFecha(g.fecha)}</div></div><span class="gasto-monto">-${fmtMonto(g.monto)}</span><button class="gasto-del" onclick="eliminarGasto(${g.id})">🗑️</button></div>`).join(''); 
+            list.innerHTML = todosMes.map(g => `<div class="gasto-item"><div class="gasto-info"><div class="gasto-categoria">${g.categoria} <button class="tipo-badge ${g.tipo === 'capital' ? 'capital' : 'ganancia'}" onclick="cambiarTipoGasto(${g.id})" title="Toca para cambiar">${g.tipo === 'capital' ? '💰 Capital' : '📊 Ganancia'} ⇄</button></div><div class="gasto-desc">${esc(g.descripcion)}</div><div class="gasto-fecha">${fmtFecha(g.fecha)}</div></div><span class="gasto-monto">-${fmtMonto(g.monto)}</span><button class="gasto-del" onclick="eliminarGasto(${g.id})">🗑️</button></div>`).join(''); 
         }
 
         function renderNotificaciones() { 
@@ -2026,12 +2085,128 @@
             const ahora = new Date(); const mesesNombres = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic']; const meses = []; 
             for (let i = 11; i >= 0; i--) { const fecha = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1); meses.push({ mes: fecha.getMonth(), año: fecha.getFullYear(), nombre: mesesNombres[fecha.getMonth()] + ' ' + fecha.getFullYear().toString().slice(-2), ingresos: 0, gastos: 0 }); }
             miembros.forEach(m => { (m.pagos || []).forEach(p => { const fp = new Date(p.fecha + 'T00:00:00'); if (isNaN(fp.getTime())) return; const md = meses.find(mes => mes.mes === fp.getMonth() && mes.año === fp.getFullYear()); if (md) md.ingresos += p.monto || 0; }); });
-            gastos.forEach(g => { const fg = new Date(g.fecha + 'T00:00:00'); if (isNaN(fg.getTime())) return; const md = meses.find(mes => mes.mes === fg.getMonth() && mes.año === fg.getFullYear()); if (md) md.gastos += g.monto || 0; }); return meses; 
+            // "Gastos" = operativos. Los gastos de capital salen del Capital, no de la ganancia
+            // (igual que en la Ganancia Limpia, los cierres y los reportes).
+            meses.forEach(md => { md.gastosCapital = 0; });
+            gastos.forEach(g => { const fg = new Date(g.fecha + 'T00:00:00'); if (isNaN(fg.getTime())) return; const md = meses.find(mes => mes.mes === fg.getMonth() && mes.año === fg.getFullYear()); if (!md) return; if (g.tipo === 'capital') md.gastosCapital += Number(g.monto) || 0; else md.gastos += Number(g.monto) || 0; }); return meses; 
+        }
+
+        // ===== GANANCIAS POR MES (todo el historial) =====
+        const NOMBRES_MES_LARGO = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        function claveMes(año, mes) { return año + '-' + String(mes + 1).padStart(2, '0'); }
+        function resumenPorMes() {
+            const mapa = new Map();
+            const ahora = new Date();
+            const actual = claveMes(ahora.getFullYear(), ahora.getMonth());
+            const ant = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+            const pasado = claveMes(ant.getFullYear(), ant.getMonth());
+            const obtener = (clave) => {
+                if (!mapa.has(clave)) {
+                    const [a, m] = clave.split('-').map(Number);
+                    mapa.set(clave, { clave, año: a, mes: m - 1, nombre: NOMBRES_MES[m - 1] + ' ' + a, nombreLargo: NOMBRES_MES_LARGO[m - 1] + ' ' + a, ingresos: 0, gastos: 0, gastosCapital: 0, nPagos: 0, nGastos: 0, enCurso: clave === actual });
+                }
+                return mapa.get(clave);
+            };
+            obtener(actual); obtener(pasado);
+            miembros.forEach(m => (m.pagos || []).forEach(p => {
+                const f = String(p.fecha || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(f) || f.slice(0, 7) > actual) return;
+                const r = obtener(f.slice(0, 7)); r.ingresos += Number(p.monto) || 0; r.nPagos++;
+            }));
+            gastos.forEach(g => {
+                const f = String(g.fecha || ''); if (!/^\d{4}-\d{2}-\d{2}$/.test(f) || f.slice(0, 7) > actual) return;
+                const r = obtener(f.slice(0, 7));
+                if (g.tipo === 'capital') r.gastosCapital += Number(g.monto) || 0; else { r.gastos += Number(g.monto) || 0; r.nGastos++; }
+            });
+            const lista = [...mapa.values()].sort((a, b) => a.clave < b.clave ? -1 : 1);
+            lista.forEach(r => { r.ganancia = r.ingresos - r.gastos; });
+            return { lista, actual: mapa.get(actual), pasado: mapa.get(pasado) };
+        }
+
+        // Ganancia del mes pasado del día 1 hasta el mismo día de hoy (comparación justa)
+        function gananciaPasadoAlDia() {
+            const ahora = new Date();
+            const ant = new Date(ahora.getFullYear(), ahora.getMonth() - 1, 1);
+            const ultimo = new Date(ant.getFullYear(), ant.getMonth() + 1, 0).getDate();
+            const limite = claveMes(ant.getFullYear(), ant.getMonth()) + '-' + String(Math.min(ahora.getDate(), ultimo)).padStart(2, '0');
+            const inicio = claveMes(ant.getFullYear(), ant.getMonth()) + '-01';
+            let total = 0;
+            miembros.forEach(m => (m.pagos || []).forEach(p => { if (p.fecha >= inicio && p.fecha <= limite) total += Number(p.monto) || 0; }));
+            gastos.forEach(g => { if (g.tipo !== 'capital' && g.fecha >= inicio && g.fecha <= limite) total -= Number(g.monto) || 0; });
+            return { total, dia: Math.min(ahora.getDate(), ultimo) };
+        }
+
+        function renderGananciasMes() {
+            const cont = document.getElementById('dashGananciasMes'); if (!cont) return;
+            const { actual, pasado } = resumenPorMes();
+            const col = v => v >= 0 ? 'var(--green)' : '#ef4444';
+            const mini = (r, etiqueta) => `<div class="dash-mini gm-mini" onclick="event.stopPropagation();verDetalleMes('${r.clave}')"><div class="gm-mes">${etiqueta}</div><div class="gm-val" style="color:${col(r.ganancia)}">${fmtMonto(r.ganancia)}</div><div class="gm-det">${r.nombreLargo}</div><div class="gm-det">▲ ${fmtMonto(r.ingresos)} · ▼ ${fmtMonto(r.gastos)}</div></div>`;
+            cont.innerHTML = mini(pasado, 'Mes pasado') + mini(actual, 'Mes actual · en curso');
+            const al = gananciaPasadoAlDia();
+            const dif = actual.ganancia - al.total;
+            const pct = al.total > 0 ? Math.round(Math.abs(dif) / al.total * 100) : null;
+            const nombrePas = NOMBRES_MES_LARGO[pasado.mes].toLowerCase();
+            let linea;
+            if (dif === 0) linea = `➖ Vas igual que al día ${al.dia} de ${nombrePas} (${fmtMonto(al.total)})`;
+            else linea = `${dif > 0 ? '📈' : '📉'} Vas <b style="color:${dif > 0 ? 'var(--green)' : '#ef4444'}">${fmtMonto(Math.abs(dif))} ${dif > 0 ? 'arriba' : 'abajo'}${pct !== null ? ' (' + pct + '%)' : ''}</b> de lo que llevabas al día ${al.dia} de ${nombrePas} (${fmtMonto(al.total)})`;
+            document.getElementById('dashGananciasComp').innerHTML = linea;
+        }
+
+        function abrirModalMeses() {
+            renderModalMeses();
+            document.getElementById('modalOverlay').classList.add('show');
+            document.getElementById('modalSheet').classList.add('show');
+        }
+
+        function renderModalMeses() {
+            const { lista } = resumenPorMes();
+            const meses = lista.filter(r => r.nPagos || r.nGastos || r.enCurso).reverse(); // más reciente primero
+            document.getElementById('modalIcon').textContent = '💵';
+            document.getElementById('modalTitle').textContent = 'Ganancias por mes';
+            document.getElementById('modalSubtitle').textContent = 'Ingresos − gastos operativos';
+            const col = v => v >= 0 ? 'var(--green)' : '#ef4444';
+            const maxAbs = Math.max(1, ...meses.map(r => Math.abs(r.ganancia)));
+            const filas = meses.map(r => {
+                const ancho = Math.round(Math.abs(r.ganancia) / maxAbs * 100);
+                return `<div class="modal-row" style="cursor:pointer" onclick="verDetalleMes('${r.clave}')"><div class="modal-row-left"><div class="modal-row-name">${r.nombreLargo}${r.enCurso ? ' <span style="font-size:8px;color:var(--orange)">· en curso</span>' : ''}</div><div class="modal-row-detail">▲ Ingresos ${fmtMonto(r.ingresos)} · ▼ Gastos ${fmtMonto(r.gastos)}</div><div class="mes-bar-bg"><div class="mes-bar" style="width:${ancho}%;background:${col(r.ganancia)}"></div></div></div><div class="modal-row-badge" style="color:${col(r.ganancia)}">${fmtMonto(r.ganancia)}</div></div>`;
+            }).join('');
+            document.getElementById('modalBody').innerHTML = filas + '<div style="font-size:9px;color:var(--text3);text-align:center;margin-top:10px">Toca un mes para ver sus pagos y gastos</div>';
+        }
+
+        function verDetalleMes(clave) {
+            const { lista } = resumenPorMes();
+            const r = lista.find(x => x.clave === clave); if (!r) return;
+            const pagosMes = []; miembros.forEach(m => (m.pagos || []).forEach(p => { if (String(p.fecha || '').slice(0, 7) === clave) pagosMes.push({ ...p, nombre: m.nombre }); }));
+            const gastosMes = gastos.filter(g => String(g.fecha || '').slice(0, 7) === clave);
+            const porFecha = (a, b) => (a.fecha < b.fecha ? 1 : -1);
+            pagosMes.sort(porFecha); gastosMes.sort(porFecha);
+            const operativos = gastosMes.filter(g => g.tipo !== 'capital');
+            const capital = gastosMes.filter(g => g.tipo === 'capital');
+            const col = v => v >= 0 ? 'var(--green)' : '#ef4444';
+            document.getElementById('modalIcon').textContent = '📅';
+            document.getElementById('modalTitle').textContent = r.nombreLargo;
+            document.getElementById('modalSubtitle').textContent = (r.enCurso ? 'Mes en curso · ' : '') + pagosMes.length + ' pagos · ' + operativos.length + ' gastos';
+            const filaGasto = g => `<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">📋 ${esc(g.descripcion || g.categoria || 'Gasto')}</div><div class="modal-row-detail">${esc(g.categoria || '—')} · ${fmtFecha(g.fecha)}</div></div><div class="modal-row-badge" style="color:#ef4444">-${fmtMonto(g.monto)}</div></div>`;
+            let html = `<button class="modal-back" onclick="renderModalMeses()">← Todos los meses</button>
+                <div class="modal-summary-bar">
+                    <div class="modal-summary-pill"><div class="modal-summary-pill-val" style="color:var(--green)">${fmtMonto(r.ingresos)}</div><div class="modal-summary-pill-lbl">Ingresos</div></div>
+                    <div class="modal-summary-pill"><div class="modal-summary-pill-val" style="color:#ef4444">${fmtMonto(r.gastos)}</div><div class="modal-summary-pill-lbl">Gastos</div></div>
+                    <div class="modal-summary-pill"><div class="modal-summary-pill-val" style="color:${col(r.ganancia)}">${fmtMonto(r.ganancia)}</div><div class="modal-summary-pill-lbl">Ganancia</div></div>
+                </div>`;
+            html += '<div class="modal-seccion">💰 Pagos (' + pagosMes.length + ')</div>';
+            html += pagosMes.length ? pagosMes.map(p => `<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">💪 ${esc(p.nombre)}</div><div class="modal-row-detail">${esc(p.plan || '—')} · ${fmtFecha(p.fecha)}</div></div><div class="modal-row-badge" style="color:var(--green)">${fmtMonto(p.monto)}</div></div>`).join('') : '<div class="modal-empty" style="padding:10px 0">Sin pagos</div>';
+            html += '<div class="modal-seccion">💸 Gastos operativos (' + operativos.length + ')</div>';
+            html += operativos.length ? operativos.map(filaGasto).join('') : '<div class="modal-empty" style="padding:10px 0">Sin gastos</div>';
+            if (capital.length) html += '<div class="modal-seccion">🏦 Gastos de capital · no restan a la ganancia</div>' + capital.map(filaGasto).join('');
+            document.getElementById('modalBody').innerHTML = html;
+            document.getElementById('modalBody').scrollTop = 0;
+            document.getElementById('modalOverlay').classList.add('show');
+            document.getElementById('modalSheet').classList.add('show');
         }
 
         function actualizarGraficoGanancias() { 
             const canvas = document.getElementById('gananciasChart'); if (!canvas) return;
             const pageDashboard = document.getElementById('page-dashboard'); if (!pageDashboard || !pageDashboard.classList.contains('active')) return;
+            if (typeof Chart === 'undefined') { setTimeout(actualizarGraficoGanancias, 1500); return; } // la librería aún no carga (o no hay internet)
             const ctx = canvas.getContext('2d'); const meses = getMesesData();
             // Si el gráfico ya existe, solo actualizar datos sin destruir
             if (gananciasChart) {
@@ -2042,7 +2217,7 @@
                 gananciasChart.update('none'); // 'none' = sin animación, más rápido
                 return;
             }
-            gananciasChart = new Chart(ctx, { type: 'bar', data: { labels: meses.map(m => m.nombre), datasets: [{ label: 'Ingresos', data: meses.map(m => m.ingresos), backgroundColor: 'rgba(34,197,94,0.5)', borderColor: '#22c55e', borderWidth: 2, borderRadius: 4, borderSkipped: false, order: 2 }, { label: 'Gastos', data: meses.map(m => m.gastos), backgroundColor: 'rgba(239,68,68,0.5)', borderColor: '#ef4444', borderWidth: 2, borderRadius: 4, borderSkipped: false, order: 2 }, { label: 'Ganancia Neta', data: meses.map(m => m.ingresos - m.gastos), type: 'line', borderColor: '#d4af37', borderWidth: 3, pointBackgroundColor: '#d4af37', pointRadius: 4, pointHoverRadius: 6, tension: 0.3, fill: false, order: 1 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(42,42,42,0.6)' }, ticks: { callback: v => '$' + v.toLocaleString('es-MX'), font: { size: 8 }, color: '#666' } }, x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#a0a0a0' } } } } }); 
+            gananciasChart = new Chart(ctx, { type: 'bar', data: { labels: meses.map(m => m.nombre), datasets: [{ label: 'Ingresos', data: meses.map(m => m.ingresos), backgroundColor: 'rgba(34,197,94,0.5)', borderColor: '#22c55e', borderWidth: 2, borderRadius: 4, borderSkipped: false, order: 2 }, { label: 'Gastos', data: meses.map(m => m.gastos), backgroundColor: 'rgba(239,68,68,0.5)', borderColor: '#ef4444', borderWidth: 2, borderRadius: 4, borderSkipped: false, order: 2 }, { label: 'Ganancia Neta', data: meses.map(m => m.ingresos - m.gastos), type: 'line', borderColor: '#d4af37', borderWidth: 3, pointBackgroundColor: '#d4af37', pointRadius: 4, pointHoverRadius: 6, tension: 0.3, fill: false, order: 1 }] }, options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false }, plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' ' + c.dataset.label + ': ' + fmtMonto(c.parsed.y) } } }, scales: { y: { beginAtZero: true, grid: { color: 'rgba(42,42,42,0.6)' }, ticks: { callback: v => '$' + v.toLocaleString('es-MX'), font: { size: 8 }, color: '#666' } }, x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#a0a0a0' } } } } }); 
         }
 
         function abrirModalStat(tipo) { 
@@ -2063,7 +2238,7 @@
                 pagosMes.sort((a, b) => new Date(b.fecha + 'T00:00:00') - new Date(a.fecha + 'T00:00:00')); const totalMes = pagosMes.reduce((s, p) => s + (p.monto || 0), 0);
                 const q = getQuincena();
                 icon.textContent = '💰'; title.textContent = 'Ingresos de la Quincena'; sub.textContent = pagosMes.length + ' pagos · Total: ' + fmtMonto(totalMes) + ' · ' + q.label;
-                body.innerHTML = pagosMes.length === 0 ? '<div class="modal-empty"><span class="modal-empty-icon">💸</span>Sin pagos este mes</div>' : pagosMes.map(p => `<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">💪 ${esc(p.nombre)}</div><div class="modal-row-detail">${p.plan||'—'} · ${fmtFecha(p.fecha)}</div></div><div class="modal-row-badge" style="color:var(--green)">${fmtMonto(p.monto)}</div></div>`).join(''); 
+                body.innerHTML = pagosMes.length === 0 ? '<div class="modal-empty"><span class="modal-empty-icon">💸</span>Sin pagos esta quincena</div>' : pagosMes.map(p => `<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">💪 ${esc(p.nombre)}</div><div class="modal-row-detail">${p.plan||'—'} · ${fmtFecha(p.fecha)}</div></div><div class="modal-row-badge" style="color:var(--green)">${fmtMonto(p.monto)}</div></div>`).join(''); 
             } else if (tipo === 'porVencer') { 
                 const porVencer = activos.filter(m => { const d = diasRestantes(m.vencimiento); return m.plan !== 'Día' && d !== null && d >= 0 && d <= DIAS_POR_VENCER; }).sort((a, b) => (diasRestantes(a.vencimiento) ?? 999) - (diasRestantes(b.vencimiento) ?? 999));
                 icon.textContent = '⚠️'; title.textContent = 'Por Vencer'; sub.textContent = porVencer.length + ' miembro(s) vencen en ≤ ' + DIAS_POR_VENCER + ' días';
@@ -2120,6 +2295,12 @@
                 }
             });
             const filtroHTML = '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border)">' + mesesBtns.join('') + '</div>';
+            if (_graficaMesIdx !== 'todos' && !meses[_graficaMesIdx]) _graficaMesIdx = 'todos';
+            // "Todos" = los mismos 12 meses que muestra la gráfica
+            const enPeriodo = (f) => {
+                if (_graficaMesIdx === 'todos') return meses.some(mm => mm.mes === f.getMonth() && mm.año === f.getFullYear());
+                return meses[_graficaMesIdx].mes === f.getMonth() && meses[_graficaMesIdx].año === f.getFullYear();
+            };
 
             // Filtrar datos según el mes seleccionado
             let pagosFiltrados = [];
@@ -2128,7 +2309,7 @@
                 (m.pagos || []).forEach(p => {
                     const fp = new Date(p.fecha + 'T00:00:00');
                     if (isNaN(fp.getTime())) return;
-                    if (_graficaMesIdx === 'todos' || (meses[_graficaMesIdx] && meses[_graficaMesIdx].mes === fp.getMonth() && meses[_graficaMesIdx].año === fp.getFullYear())) {
+                    if (enPeriodo(fp)) {
                         pagosFiltrados.push({ ...p, nombre: m.nombre });
                     }
                 });
@@ -2136,13 +2317,15 @@
             gastos.forEach(g => {
                 const fg = new Date(g.fecha + 'T00:00:00');
                 if (isNaN(fg.getTime())) return;
-                if (_graficaMesIdx === 'todos' || (meses[_graficaMesIdx] && meses[_graficaMesIdx].mes === fg.getMonth() && meses[_graficaMesIdx].año === fg.getFullYear())) {
+                if (enPeriodo(fg)) {
                     gastosFiltrados.push(g);
                 }
             });
 
             const totalIngresos = pagosFiltrados.reduce((s, p) => s + (p.monto || 0), 0);
-            const totalGastos = gastosFiltrados.reduce((s, g) => s + (g.monto || 0), 0);
+            const gastosCapitalFiltrados = gastosFiltrados.filter(g => g.tipo === 'capital');
+            gastosFiltrados = gastosFiltrados.filter(g => g.tipo !== 'capital');
+            const totalGastos = gastosFiltrados.reduce((s, g) => s + (Number(g.monto) || 0), 0);
             // Validar el índice del mes — resetear a 'todos' si no es válido
             if (_graficaMesIdx !== 'todos' && (!meses[_graficaMesIdx] || _graficaMesIdx < 0 || _graficaMesIdx >= meses.length)) {
                 _graficaMesIdx = 'todos';
@@ -2161,7 +2344,8 @@
                 gastosFiltrados.sort((a, b) => new Date(b.fecha + 'T00:00:00') - new Date(a.fecha + 'T00:00:00'));
                 contenido = gastosFiltrados.length === 0
                     ? '<div class="modal-empty"><span class="modal-empty-icon">✅</span>Sin gastos en este periodo</div>'
-                    : gastosFiltrados.map(g => '<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">📋 ' + esc(g.descripcion || g.categoria || 'Gasto') + '</div><div class="modal-row-detail">' + (g.categoria || '—') + ' · ' + fmtFecha(g.fecha) + (g.tipo === 'capital' ? ' · 💰 Capital' : '') + '</div></div><div class="modal-row-badge" style="color:#ef4444">' + fmtMonto(g.monto) + '</div></div>').join('');
+                    : gastosFiltrados.map(g => '<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">📋 ' + esc(g.descripcion || g.categoria || 'Gasto') + '</div><div class="modal-row-detail">' + (g.categoria || '—') + ' · ' + fmtFecha(g.fecha) + '</div></div><div class="modal-row-badge" style="color:#ef4444">' + fmtMonto(g.monto) + '</div></div>').join('');
+                if (gastosCapitalFiltrados.length) contenido += '<div class="modal-seccion">🏦 Gastos de capital · no restan a la ganancia</div>' + gastosCapitalFiltrados.map(g => '<div class="modal-row"><div class="modal-row-left"><div class="modal-row-name">📋 ' + esc(g.descripcion || g.categoria || 'Gasto') + '</div><div class="modal-row-detail">' + (g.categoria || '—') + ' · ' + fmtFecha(g.fecha) + '</div></div><div class="modal-row-badge" style="color:var(--gold)">' + fmtMonto(g.monto) + '</div></div>').join('');
             } else { // ganancia
                 const neta = totalIngresos - totalGastos;
                 sub.textContent = mesLabel + ' · Ingresos: ' + fmtMonto(totalIngresos) + ' · Gastos: ' + fmtMonto(totalGastos);
@@ -2479,6 +2663,7 @@
         }
 
         function actualizarDashboard() { 
+            renderGananciasMes();
             const activos = miembros.filter(m => m.activo === true); const pausados = miembros.filter(m => m.activo === false); 
             const alDia = activos.filter(m => { const d = diasRestantes(m.vencimiento); return d !== null && d >= 0; }).length; 
             const vencidos = activos.filter(m => { const d = diasRestantes(m.vencimiento); return d !== null && d < 0; }).length;
